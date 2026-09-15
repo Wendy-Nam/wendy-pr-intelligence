@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="ko" bgcolor="white">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>산업군 인사이트 뉴스레터 — 2026-09-15</title>
+<style>
+  @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap");
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background-color: #ffffff !important;
+    font-family: 'Noto Sans KR', -apple-system, 'Pretendard', sans-serif;
+    color: #1c1917;
+    background: #fafaf9;
+    line-height: 1.7;
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 40px 28px;
+  }
+
+  /* ── Header ── */
+  .brand { font-size: 11px; font-weight: 700; color: #78716c; letter-spacing: 3px; margin-bottom: 6px; }
+  h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #1c1917; }
+  .meta-line { font-size: 13px; color: #78716c; margin-top: 4px; margin-bottom: 20px; }
+
+  /* ── TL;DR ── */
+  .tldr {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-left: 4px solid #1c1917;
+    border-radius: 0 8px 8px 0;
+    padding: 18px 22px;
+    margin-bottom: 36px;
+    font-size: 15px;
+    color: #292524;
+  }
+  .tldr-lbl { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #a8a29e; margin-bottom: 8px; }
+
+  /* ── Summary blocks ── */
+  .summary-block {
+    border-left: 4px solid #e7e5e4;
+    background: #fff;
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 12px;
+    border: 1px solid #e7e5e4;
+    border-left-width: 4px;
+  }
+  .summary-block .sb-hd {
+    display: flex; align-items: center;
+    font-size: 12px; font-weight: 700; color: #57534e;
+    margin-bottom: 8px;
+  }
+  .summary-block .sb-hd .cat-dot { margin-right: 10px; }
+  .summary-block p { font-size: 14px; color: #292524; line-height: 1.65; }
+  .summary-block p + p { margin-top: 18px; }
+
+  /* ── Section heading ── */
+  h2 {
+    font-size: 17px; font-weight: 800;
+    color: #1c1917;
+    margin: 40px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #1c1917;
+    letter-spacing: -0.3px;
+  }
+
+  /* ── Category group in headlines ── */
+  .hl-group { margin-bottom: 22px; }
+  .hl-group-hd {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 700; color: #57534e;
+    margin-bottom: 8px;
+  }
+  .cat-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .hl-group ul { list-style: none; }
+  .hl-group li {
+    font-size: 14px;
+    padding: 7px 0;
+    border-bottom: 1px solid #f5f5f4;
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+    color: #292524;
+  }
+  .hl-group li:last-child { border-bottom: none; }
+
+  /* ── Source chip ── */
+  .src-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600;
+    background: #f5f5f4; color: #78716c;
+    padding: 2px 9px 2px 7px; border-radius: 20px;
+    text-decoration: none; border: 1px solid #e7e5e4;
+    white-space: nowrap; flex-shrink: 0;
+    transition: background 0.15s;
+    margin-right: 6px; margin-bottom: 4px;
+  }
+  .src-chip:hover { background: #e7e5e4; color: #44403c; }
+  .src-chip::before { content: '↗'; font-size: 10px; }
+
+  /* ── Insight card ── */
+  .insight {
+    background: #fff;
+    border: 1px solid #e7e5e4;
+    border-radius: 10px;
+    margin-bottom: 28px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .insight-hd {
+    background: #1c1917;
+    color: #fff;
+    padding: 14px 22px;
+    font-size: 15px; font-weight: 700;
+    line-height: 1.6;
+  }
+  .insight-num { color: #fbbf24; margin-right: 8px; }
+  .insight-body { padding: 16px 20px; }
+
+  .insight-sec { margin-bottom: 16px; }
+  .insight-sec:last-child { margin-bottom: 0; }
+  .sec-lbl {
+    font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
+    margin-bottom: 4px;
+  }
+  .lbl-imp { color: #57534e; }
+  .lbl-obs { color: #57534e; }
+  .lbl-ctx { color: #57534e; }
+  .lbl-fact { color: #a8a29e; }
+
+  .insight-sec p { font-size: 14px; color: #292524; line-height: 1.65; }
+  .insight-sec p + p { margin-top: 10px; }
+
+  /* ── Fact list ── */
+  .fact-list { list-style: none; margin-top: 8px; }
+  .fact-item {
+    font-size: 13px; color: #44403c;
+    padding: 8px 0 8px 14px;
+    border-left: 3px solid #e7e5e4;
+    margin-bottom: 6px;
+    display: flex; align-items: flex-start; gap: 10px;
+    flex-wrap: wrap;
+  }
+  .fact-text { flex: 1; min-width: 0; line-height: 1.6; }
+
+  /* ── Source appendix ── */
+  .src-list { list-style: none; counter-reset: src; }
+  .src-list li {
+    counter-increment: src;
+    font-size: 13px; color: #57534e;
+    padding: 7px 0;
+    border-bottom: 1px solid #f5f5f4;
+    display: flex; gap: 10px; align-items: baseline;
+  }
+  .src-list li::before {
+    content: counter(src);
+    font-size: 11px; font-weight: 700;
+    color: #a8a29e;
+    background: #f5f5f4;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .src-list a { color: #2563eb; text-decoration: none; font-weight: 600; }
+  .src-list a:hover { text-decoration: underline; }
+  .src-list .src-title { color: #78716c; font-size: 12px; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-top: 44px; padding-top: 16px;
+    border-top: 1px solid #e7e5e4;
+    font-size: 11px; color: #a8a29e;
+    line-height: 1.65;
+  }
+
+  /* 카테고리 dot 색은 categories.yaml 의 color 로 인라인 적용된다(도메인 무관). */
+
+  @media (max-width: 600px) {
+    body { padding: 20px 14px !important; }
+    h1   { font-size: 22px !important; }
+    .insight-hd  { padding: 12px 16px !important; font-size: 14px !important; }
+    .insight-body { padding: 16px !important; }
+    .summary-block { padding: 12px 14px !important; }
+    .footer { font-size: 10px !important; }
+    .fact-item { flex-direction: column !important; gap: 4px !important; }
+  }
+
+</style>
+<style>.sample-nav{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;padding:14px 0;margin-bottom:24px;border-bottom:1px solid #ddd;font:12px/1.6 system-ui;color:#655f56}.sample-nav a{color:#344d42}html{overflow-wrap:anywhere}img{max-width:100%}@media(max-width:600px){body{padding:18px 12px!important}.sample-nav{font-size:11px}}</style></head>
+<body bgcolor="white" style="background-color:#ffffff;">
+
+<div class="brand">CONTOSO MOTORS · INDUSTRY INSIGHT</div>
+<h1>산업군 인사이트 뉴스레터</h1>
+<div class="meta-line">2026년 09월 15일 (화) · 최근 2일 · 6건 (해외 3, 국내 3)</div>
+
+<div style="background:#fff;border:1px solid #e7e5e4;border-radius:8px;padding:20px 24px;margin-bottom:32px;font-size:15px;color:#292524;line-height:1.65;">
+  <div class="tldr-p" style="margin-bottom:10px;">배터리 성능 경쟁과 함께 충전 운영 정보의 공개가 늘었다. 전기 밴 신규 진입과 배터리 시험 생산 투자도 이어졌다.</div>
+  <div class="tldr-p" style="margin-bottom:0;">Contoso Motors는 배송 고객의 겨울철 운행 조건과 충전 대기 시간을 함께 점검할 수 있다. 경쟁사 발표 수치는 실제 운행 조건과 대조할 대상이다.</div>
+</div>
+<h2>경쟁사 동향</h2>
+<div class="summary-block" style="border-left-color:#1c1917;">
+  <div class="sb-hd">Aster EV</div>
+  <div style="font-size:14px;padding:4px 0;color:#292524;">Aster EV, 배터리 재활용 업체와 회수 체계 시범 운영 <a href="sources.html#market-2" style="color:#a8a29e;font-size:12px;text-decoration:none;">/샘플 산업저널 2</a></div>
+  <div style="font-size:14px;padding:4px 0;color:#292524;">Aster EV, 도심 배송용 전기 밴 사전 계약 시작 <a href="sources.html#market-5" style="color:#a8a29e;font-size:12px;text-decoration:none;">/샘플 산업저널 5</a></div>
+</div>
+<h2>이번 호 등장 기업 <span style="font-size:13px;font-weight:400;color:#a8a29e;">참고용</span></h2>
+<div style="column-count:2;column-gap:24px;font-size:12px;line-height:1.6;">
+  <div style="break-inside:avoid;padding:3px 0;"><span style="font-weight:700;color:#57534e;">Northstar Cell</span><br><span style="color:#a8a29e;">가상의 배터리 셀 개발사. 저온 성능과 시험 생산을 연구한다.</span></div>
+  <div style="break-inside:avoid;padding:3px 0;"><span style="font-weight:700;color:#57534e;">Voltway</span><br><span style="color:#a8a29e;">가상의 상용차 충전 사업자. 물류 거점 충전소를 운영한다.</span></div>
+</div>
+<h2>인사이트</h2>
+<div class="insight">
+  <div class="insight-hd"><span class="insight-num">INSIGHT ①</span> 겨울철 운행 성능을 충전 운영 데이터와 함께 비교</div>
+  <div class="insight-body">
+    <div class="insight-sec">
+      <div class="sec-lbl lbl-obs">관찰</div>
+      <p>Northstar Cell은 저온 충전 시제품을 공개했다. <a href="sources.html#market-1" style="color:#a8a29e;font-size:12px;text-decoration:none;">[1]</a> Meridian Charge는 충전 대기 시간을 공개했다. <a href="sources.html#market-4" style="color:#a8a29e;font-size:12px;text-decoration:none;">[3]</a></p>
+    </div>
+    <div class="insight-sec">
+      <div class="sec-lbl lbl-imp">자사 함의</div>
+      <p>자사 배송 고객의 겨울철 운행 기록을 정리한다. 충전 속도와 실제 대기 시간을 함께 비교할 수 있다.</p>
+    </div>
+  </div>
+</div>
+<div class="insight">
+  <div class="insight-hd"><span class="insight-num">INSIGHT ②</span> 전기 밴 비교 기준에 적재 공간과 인도 일정을 포함</div>
+  <div class="insight-body">
+    <div class="insight-sec">
+      <div class="sec-lbl lbl-obs">관찰</div>
+      <p>Aster EV가 도심 배송용 전기 밴의 사전 계약을 시작했다. <a href="sources.html#market-5" style="color:#a8a29e;font-size:12px;text-decoration:none;">[5]</a></p>
+    </div>
+    <div class="insight-sec">
+      <div class="sec-lbl lbl-imp">자사 함의</div>
+      <p>자사 영업 자료에 적재 공간과 총운영비 비교표를 추가한다. 경쟁 차량의 실제 인도 일정은 후속 확인 대상으로 둔다.</p>
+    </div>
+  </div>
+</div>
+<h2>카테고리별 동향</h2>
+<div class="summary-block" style="border-left-color:#2563eb;">
+  <div class="sb-hd"><div class="cat-dot" style="background:#2563eb;"></div>배터리</div>
+  <p>Northstar Cell은 영하 10도 충전 시간을 기존 대비 20% 줄인 시제품을 공개했다. <a href="sources.html#market-1" style="color:#a8a29e;font-size:12px;text-decoration:none;">[1]</a> 양산 일정은 공개하지 않았다. Aster EV는 차량 500대를 대상으로 폐배터리 회수와 소재 추적을 시험한다. <a href="sources.html#market-2" style="color:#a8a29e;font-size:12px;text-decoration:none;">[2]</a></p>
+</div>
+<div class="summary-block" style="border-left-color:#d97706;">
+  <div class="sb-hd"><div class="cat-dot" style="background:#d97706;"></div>충전 인프라</div>
+  <p>Voltway는 배송 차량용 충전소 12곳을 개설했다. <a href="sources.html#market-3" style="color:#a8a29e;font-size:12px;text-decoration:none;">[4]</a> 야간 충전 예약 기능도 제공한다. Meridian Charge는 충전소별 가동률과 평균 대기 시간을 공개했다. <a href="sources.html#market-4" style="color:#a8a29e;font-size:12px;text-decoration:none;">[3]</a></p>
+</div>
+<div class="summary-block" style="border-left-color:#059669;">
+  <div class="sb-hd"><div class="cat-dot" style="background:#059669;"></div>신차·라인업</div>
+  <p>Aster EV는 적재 공간 6세제곱미터의 전기 밴을 공개했다. <a href="sources.html#market-5" style="color:#a8a29e;font-size:12px;text-decoration:none;">[5]</a> 첫 인도는 내년 상반기로 안내했다.</p>
+</div>
+<div class="summary-block" style="border-left-color:#6b7280;">
+  <div class="sb-hd"><div class="cat-dot" style="background:#6b7280;"></div>투자 · M&amp;A</div>
+  <p>Northstar Cell은 시험 생산 설비 증설에 사용할 300억원 규모의 투자를 유치했다고 밝혔다. <a href="sources.html#market-6" style="color:#a8a29e;font-size:12px;text-decoration:none;">[6]</a></p>
+</div>
+<h2>출처 <span style="font-size:14px;font-weight:400;color:#a8a29e;">(6건)</span></h2>
+<div style="column-count:2;column-gap:24px;font-size:12px;color:#78716c;line-height:1.8;">
+  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[1]</span> <a href="sources.html#market-1" style="color:#57534e;text-decoration:none;"></a></div>
+  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[2]</span> <a href="sources.html#market-2" style="color:#57534e;text-decoration:none;"></a></div>
+  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[3]</span> <a href="sources.html#market-4" style="color:#57534e;text-decoration:none;"></a></div>
+  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[4]</span> <a href="sources.html#market-3" style="color:#57534e;text-decoration:none;"></a></div>
+  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[5]</span> <a href="sources.html#market-5" style="color:#57534e;text-decoration:none;"></a></div>
+  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[6]</span> <a href="sources.html#market-6" style="color:#57534e;text-decoration:none;"></a></div>
+</div>
+
+<div class="footer">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+    <div>
+      <div>수집 기간: 2026-09-14 ~ 09-15 &nbsp;·&nbsp; 출처 6건</div>
+      <div style="margin-top:3px;">생성 2026-09-15 17:04 KST</div>
+    </div>
+    <div style="text-align:right;">
+      Contoso Motors · Intelligence<br>
+      <span style="color:#d1d5db;">모든 주장은 출처 URL 원문으로 검증 가능</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

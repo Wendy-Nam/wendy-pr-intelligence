@@ -14,6 +14,16 @@
 > [!IMPORTANT]
 > 로컬 **Claude Code Desktop**(Windows·macOS) 전용. 뉴스 사이트를 직접 수집하므로 네트워크가 필요합니다. **Cowork(클라우드)에서는 수집이 차단되어 동작하지 않습니다.**
 
+## 온라인 샘플 미리보기
+
+설치 없이 실제 HTML 출력 형식을 볼 수 있습니다. 모든 기업·기사·수치는 가상 예시입니다.
+
+- [샘플 홈](https://wendy-nam.github.io/wendy-pr-intelligence/)
+- [자사 PR 브리핑](https://wendy-nam.github.io/wendy-pr-intelligence/self-brief.html)
+- [마켓 브리핑](https://wendy-nam.github.io/wendy-pr-intelligence/market-brief.html)
+
+샘플 재생성: `python scripts/demo/build_samples.py` ([개발 안내](scripts/demo/README.md)).
+
 ## 결과물
 
 사람들이 실제로 받는 건 아래 두 산출물입니다. *(형식 예시 — 회사·카테고리 이름은 설정에 따라 채워집니다.)*
