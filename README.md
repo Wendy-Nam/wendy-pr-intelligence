@@ -96,10 +96,13 @@ flowchart LR
 
 ### Claude Code 가 아닌 호스트에서 쓰기 (Codex · Hermes/OpenCode 등)
 
-엔진(`prmonitor/`)은 순수 Python CLI라 `PRM_LLM` 환경변수로 합성 단계(Step 7)의
-LLM 호출을 다른 CLI로 바꿀 수 있습니다. 매니페스트(`.claude-plugin/`)·훅(`hooks/`)·
-`agents/*.md` 서브에이전트 정의만 Claude Code 전용이고, 나머지(설정 스캐폴딩·
-수집·분류·렌더·발송)는 호스트 무관하게 동작합니다.
+엔진(`prmonitor/`)은 순수 Python CLI라 `PRM_LLM` 환경변수로 LLM 호출(뉴스레터 합성,
+기사 중요도 보강, PR 톤 판정·브리핑 산문 — 전부 `prmonitor/steps/llm_adapter.py` 하나를
+거친다)을 다른 CLI로 바꿀 수 있습니다. 매니페스트(`.claude-plugin/`)·훅(`hooks/`)·
+`agents/setup-bootstrap.md`(대화형 설정 마법사)만 Claude Code 전용이고, 나머지(설정
+스캐폴딩·수집·분류·렌더·발송)는 호스트 무관하게 동작합니다.
+(`agents/insight-synthesizer.md`·`agents/category-digest.md`는 이름과 달리 실제 Claude
+Code 서브에이전트가 아니라 평범한 프롬프트 텍스트 파일이라, 별도 이식 작업이 필요 없습니다.)
 
 | `PRM_LLM` | 대상 | 설정 |
 |---|---|---|
@@ -112,9 +115,15 @@ export PRM_LLM=codex
 python3 prmonitor_launch.py newsletter          # Claude Code 훅·매니페스트 없이 그대로 동작
 ```
 
-모델 이름은 `PRM_SYNTH_MODEL`(합성)·`PRM_GLOSSARY_MODEL`(용어집)로 백엔드 무관하게
-override 가능합니다. Claude Code 없이 실행할 땐 `SessionStart` 훅과 `/setup`·`/newsletter`
-슬래시 명령이 없으니, 위 CLI를 직접 호출하거나 `routines/README.md` 의 크론 예시를 쓰세요.
+모델 이름은 `PRM_SYNTH_MODEL`(합성)·`PRM_GLOSSARY_MODEL`(용어집)·`PRM_ENRICH_MODEL`(기사
+보강)·`PRM_HAIKU_MODEL`/`PRM_SONNET_MODEL`(PR 클리핑 톤·브리핑)로 백엔드 무관하게 override
+가능합니다.
+
+> [!IMPORTANT]
+> Claude Code 없이 실행할 땐 `SessionStart` 훅이 없어서 **최초 1회 스캐폴딩을 직접
+> 실행**해야 합니다: `python3 prmonitor_launch.py init --force` (config/data 골격 +
+> venv 생성). 이후엔 `/setup`·`/newsletter` 슬래시 명령이 없으니 위 CLI를 직접
+> 호출하거나 `routines/README.md` 의 크론 예시를 쓰세요.
 
 ## 첫 설정 — `/setup`
 

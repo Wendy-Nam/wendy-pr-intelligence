@@ -54,6 +54,11 @@ class SynthJob:
     add_dir: str = ""
     log_path: str | Path = ""
     env: dict | None = None
+    # True for run_text() calls that read the reply straight from stdout
+    # (no file output, no tool grants needed) — skips the file-writing-mode
+    # flags (--allowedTools/--add-dir/--output-format stream-json) that would
+    # otherwise put structured JSON events on stdout instead of a plain reply.
+    text_mode: bool = False
 
 
 class LLMBackend:
@@ -86,6 +91,16 @@ class LLMBackend:
                                    env=job.env, check=False)
         return proc.returncode
 
+    def run_text(self, job: SynthJob, timeout: float | None = None) -> tuple[int, str]:
+        """Run the job and return (returncode, stdout) directly — for callers
+        that read the LLM's reply from stdout instead of a written file
+        (no job.log_path needed here).
+        """
+        argv = self._argv(job)
+        proc = subprocess.run(argv, capture_output=True, text=True,
+                               env=job.env, timeout=timeout, check=False)
+        return proc.returncode, proc.stdout
+
 
 class ClaudeBackend(LLMBackend):
     """Claude Code CLI (`claude -p`) — the original, unchanged behavior."""
@@ -99,6 +114,9 @@ class ClaudeBackend(LLMBackend):
         claude_bin = shutil.which("claude")
         if not claude_bin:
             raise RuntimeError("claude CLI not found on PATH")
+        if job.text_mode:
+            # Plain reply on stdout — no file-writing tools, no stream-json.
+            return [claude_bin, "-p", job.prompt, "--model", job.model]
         argv = [
             claude_bin, "-p", job.prompt,
             "--model", job.model,
