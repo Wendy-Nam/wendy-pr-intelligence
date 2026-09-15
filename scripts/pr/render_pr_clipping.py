@@ -89,13 +89,15 @@ def _author_from_raw_html(html: str) -> str:
         return m.group(1) + " 기자"
     return ""
 
-# lib/ (gnews_resolver 등) 접근을 위해 scripts/ 디렉토리를 path에 추가
+# lib/ (gnews_resolver, rss_fetch 등) 접근을 위해 scripts/ 디렉토리를 path에 추가
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     import feedparser
+    from lib import rss_fetch
 except ImportError:
     feedparser = None
+    rss_fetch = None
 
 from lib.common import CACHE_DIR, PR_OUTPUT_DIR, PROCESSED_DIR, load_json, save_json
 PR_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -308,7 +310,7 @@ def extract_summary(body: str, evidence: str) -> str:
 
 def fetch_gnews_pr(hours: int) -> list[dict]:
     """Google News RSS에서 자사 언급 기사 직접 수집 (도메인팩 자사명·별칭 쿼리)."""
-    if feedparser is None:
+    if feedparser is None or rss_fetch is None:
         print("  WARN: feedparser 없음 — pip install feedparser", file=sys.stderr)
         return []
 
@@ -323,7 +325,9 @@ def fetch_gnews_pr(hours: int) -> list[dict]:
             query=encoded, hl=q_cfg["hl"], gl=q_cfg["gl"]
         )
         try:
-            feed = feedparser.parse(url)
+            # rss_fetch: raw bytes + 3단계 XML 복구 폴백 (뉴스레터 수집기와 동일 로직) —
+            # feedparser.parse(url) 단독 호출보다 깨진 피드에서 훨씬 덜 유실된다.
+            feed = rss_fetch.fetch_parsed_feed(url, q_cfg["query"])
             entries = feed.entries or []
             print(f"  Google News [{q_cfg['query']}] → {len(entries)}건", file=sys.stderr)
         except Exception as e:
