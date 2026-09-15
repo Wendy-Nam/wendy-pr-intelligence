@@ -44,6 +44,8 @@ def main():
             ('funding','투자 · M&A','Northstar Cell, 시험 생산 설비 확대 자금 유치','Northstar Cell은 시험 생산 설비 증설에 사용할 300억원 규모의 투자를 유치했다고 밝혔다.'),
         ]
         sources = [dict(url=f'sources.html#market-{i}',name=f'샘플 산업저널 {i}',date=DATE,title=t,summary=s,category=c) for i,(c,n,t,s) in enumerate(items,1)]
+        for source in sources:
+            source.update(source_name=source["name"], source_title=source["title"], source_date=source["date"])
         cats=[]
         for cid,label in dict((c,n) for c,n,_,_ in items).items():
             group=[s for s in sources if s['category']==cid]
