@@ -112,7 +112,7 @@ Code 서브에이전트가 아니라 평범한 프롬프트 텍스트 파일이�
 
 ```bash
 export PRM_LLM=codex
-python3 prmonitor_launch.py newsletter          # Claude Code 훅·매니페스트 없이 그대로 동작
+python3 prmonitor_launch.py market-brief        # Claude Code 훅·매니페스트 없이 그대로 동작
 ```
 
 모델 이름은 `PRM_SYNTH_MODEL`(합성)·`PRM_GLOSSARY_MODEL`(용어집)·`PRM_ENRICH_MODEL`(기사

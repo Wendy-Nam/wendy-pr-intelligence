@@ -19,7 +19,7 @@ argument-hint: "[date] [hours] — 예: '2026-06-08 72' / '2026-06-08' / 빈칸(
 ## 실행
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" pr $DATE ${HOURS:+$HOURS}
+python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" self-brief-daily $DATE ${HOURS:+$HOURS}
 ```
 
 - DATE 인자(첫 토큰)가 있으면 그대로, 없으면 오늘.

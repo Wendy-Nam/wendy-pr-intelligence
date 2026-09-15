@@ -11,12 +11,12 @@ description: 자사 PR 모니터링 — 평일 10:30 (스케줄은 Routines UI �
 실행:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" pr
+python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" self-brief-daily
 ```
 
-`prmonitor pr-clip-daily` 가 전체를 자동 처리한다:
+`prmonitor self-brief-daily` 가 전체를 자동 처리한다:
 - 수집창은 config/pipelines.yaml 기준 자동 결정 (24h, 월요일 72h — 여기 박지 않는다)
-- 전처리(pre, 기존 산출물 있으면 재사용) → PR 클리핑(pr-clip)
+- 전처리(pre, 기존 산출물 있으면 재사용) → PR 클리핑(self-brief)
 - 자사 언급 기사 추출 → HTML/CSV/xlsx 생성 → marketing_pr_list 그룹 이메일 발송(xlsx 첨부) → 월별 누적
 
 완료 보고:

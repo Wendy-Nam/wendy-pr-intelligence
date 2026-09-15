@@ -63,8 +63,8 @@ scheduled-tasks MCP·데스크톱 Routines는 Claude Code 전용이라 다른 �
 
 ```
 # 매일 10:30, 09:30 같은 형태로 그냥 시스템 크론에 등록
-30 10 * * 1-5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor pr-clip-daily
-30  9 * * 1,3,5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor newsletter
+30 10 * * 1-5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor self-brief-daily
+30  9 * * 1,3,5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor market-brief
 ```
 
 Claude Code가 아닌 호스트를 합성 백엔드로 쓰려면 `PRM_LLM`으로 지정한다
