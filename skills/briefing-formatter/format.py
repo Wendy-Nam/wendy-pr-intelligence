@@ -991,7 +991,7 @@ def render_sources(reg: SourceRegistry, total_articles: int = 0) -> str:
         url  = e["url"]
         name = e["name"]
         if url:
-            dom = esc(domain_from_url(url))
+            dom = esc(domain_from_url(url) or name or "출처")
             html += f'  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[{num}]</span> <a href="{esc(url)}" style="color:#57534e;text-decoration:none;">{dom}</a></div>\n'
         else:
             html += f'  <div style="padding:2px 0;"><span style="color:#a8a29e;font-weight:700;">[{num}]</span> {esc(name)}</div>\n'
