@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))  # scripts/ (lib
 from lib.common import CONFIG_DIR, PR_OUTPUT_DIR, load_yaml
 PR_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-# 일일 CSV(gen-pr-monitor.py) 헤더와 동일해야 함
+# 일일 CSV(render_pr_clipping.py) 헤더와 동일해야 함
 HEADER = ["날짜", "매체", "기자", "제목", "언급유형", "톤", "주가관련", "맥락", "URL"]
 
 

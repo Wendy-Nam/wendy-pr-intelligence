@@ -8,8 +8,8 @@ all pipeline logic lives in the step modules (faithful ports of the .sh files).
 Subcommand map:
   pre <date> [--hours N]    ← run-pre.sh         (fetch→extract→classify→aggregate→preload)
   post <date> <hours>       ← run-post.sh        (resolve-refs→format→landscape→gate→email)
-  pr-monitor <date>         ← run-pr-monitor.sh  (gen-pr→accumulate→email)
-  pr [date]                 ← run-pr-daily.sh    (pre + pr-monitor)
+  pr-clip <date>            ← run-pr-monitor.sh  (render→accumulate→email)
+  pr-clip-daily [date]      ← run-pr-daily.sh    (pre + pr-clip)
   newsletter [--hours N]    ← run-newsletter.sh  (pre → claude -p synth → post)
   init                      ← SessionStart scaffolding (no venv required first)
 """
@@ -81,11 +81,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_post.add_argument("date", nargs="?", default=None)
     p_post.add_argument("hours", type=int, nargs="?", default=None)
 
-    p_prmon = sub.add_parser("pr-monitor", help="PR 모니터링 (톤판정→누적→발송)")
+    # aliases=[...]: 예전 이름(pr-monitor/pr)도 당분간 그대로 받는다 — 이미 등록된
+    # 크론/Routines 를 깨지 않기 위한 마이그레이션 유예. 새로 쓸 땐 정식 이름 사용.
+    p_prmon = sub.add_parser("pr-clip", aliases=["pr-monitor"],
+                             help="PR 모니터링 (톤판정→누적→발송)")
     p_prmon.add_argument("date", nargs="?", default=None)
     p_prmon.add_argument("hours", type=int, nargs="?", default=None)
 
-    p_pr = sub.add_parser("pr", help="PR 일일 (pre + pr-monitor)")
+    p_pr = sub.add_parser("pr-clip-daily", aliases=["pr"], help="PR 일일 (pre + pr-clip)")
     p_pr.add_argument("date", nargs="?", default=None)
     p_pr.add_argument("hours", type=int, nargs="?", default=None)
 
@@ -104,7 +107,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
-    if getattr(args, "date", None) is None and args.cmd in {"pre", "post", "pr-monitor", "pr", "newsletter"}:
+    _date_cmds = {"pre", "post", "pr-clip", "pr-monitor", "pr-clip-daily", "pr", "newsletter"}
+    if getattr(args, "date", None) is None and args.cmd in _date_cmds:
         args.date = _today()
 
     if args.cmd == "paths":
@@ -130,11 +134,17 @@ def main(argv: list[str] | None = None) -> int:
     if argv is None:
         _reexec_under_venv(paths.venv_python())
 
-    from .steps import pre, post, pr_monitor, pr_daily, newsletter
+    from .steps import pre, post, pr_clip, pr_clip_daily, newsletter
     dispatch = {
-        "pre": pre.run, "post": post.run, "pr-monitor": pr_monitor.run,
-        "pr": pr_daily.run, "newsletter": newsletter.run,
+        "pre": pre.run, "post": post.run,
+        "pr-clip": pr_clip.run, "pr-monitor": pr_clip.run,          # pr-monitor: alias
+        "pr-clip-daily": pr_clip_daily.run, "pr": pr_clip_daily.run,  # pr: alias
+        "newsletter": newsletter.run,
     }
+    if args.cmd in ("pr-monitor", "pr"):
+        print(f"[prmonitor] '{args.cmd}' 는 예전 이름입니다 — "
+              f"{'pr-clip' if args.cmd == 'pr-monitor' else 'pr-clip-daily'} 로 갱신하세요.",
+              file=sys.stderr)
     return dispatch[args.cmd](args)
 
 

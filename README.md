@@ -143,7 +143,7 @@ python3 prmonitor_launch.py newsletter          # Claude Code 훅·매니페스�
 | `/pr-clipping [date] [hours]` | 자사 PR 클리핑 생성·발송 (`hours`=수집 범위) |
 | `/setup` | 설정·상태·키·수신자·키워드·루틴 |
 
-자연어도 동작합니다("오늘 브리핑", "PR 모니터링", "상태"). 내부 CLI: `python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" <pre|post|pr|newsletter|init|paths>`.
+자연어도 동작합니다("오늘 브리핑", "PR 모니터링", "상태"). 내부 CLI: `python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" <pre|post|pr-clip|pr-clip-daily|newsletter|init|paths>` (`pr`·`pr-monitor` 는 예전 이름으로 당분간 그대로 동작).
 
 ## 커스터마이즈
 

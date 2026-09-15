@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Step E: 자사 맥락 타임라인 결정론 축적 (LLM 호출 없음)
 
-입력: data/output/pr/pr-monitoring-{date}.csv (gen-pr-monitor.py 산출 — Haiku 톤 포함)
+입력: data/output/pr/pr-monitoring-{date}.csv (render_pr_clipping.py 산출 — Haiku 톤 포함)
 대상: data/self-context/timeline/{YYYY-QN}.yaml
 
 동작:

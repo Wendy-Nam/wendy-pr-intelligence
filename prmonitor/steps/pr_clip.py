@@ -1,4 +1,4 @@
-"""PR Monitor step — Python port of ``scripts/pr/run-pr-monitor.sh``.
+"""PR clipping step (CLI: pr-clip) — Python port of ``scripts/pr/run-pr-monitor.sh``.
 
 Faithful, behavior-preserving port of the bash orchestrator. Each block cites the
 ``.sh`` line numbers it ports (numbers refer to the ground-truth copy at
@@ -6,7 +6,7 @@ Faithful, behavior-preserving port of the bash orchestrator. Each block cites th
 
 Pipeline (self-PR clipping harness):
   Step A  require extracted-{date}.json  (precondition; run-pre.sh must run first)
-  Step B  gen-pr-monitor.py {date} {hours}  → pr-monitoring-{date}.html + .csv
+  Step B  render_pr_clipping.py {date} {hours} → pr-monitoring-{date}.html + .csv
   Step C  accumulate-pr.py {month}          → pr-monthly-{month}.csv (best-effort)
   Step C-2 accumulate-self-context.py {date} → timeline append (deterministic)
   Step D  send_html_email(marketing group) + monthly-slice xlsx attachment
@@ -22,7 +22,7 @@ Three-root differences vs the .sh (per the architecture contract):
     in pure Python.
 
 run(args) reads ``args.date`` (the dispatcher fills it with today when omitted).
-There is no ``--no-email`` flag on the ``pr-monitor`` subparser (see
+There is no ``--no-email`` flag on the ``pr-clip`` subparser (see
 prmonitor.__main__), so the .sh's ``$3 == --no-email`` skip path is unreachable
 here and is intentionally not wired in; email always goes through
 common.send_html_email, which itself no-ops gracefully when delivery.yaml/auth is
@@ -158,9 +158,9 @@ def run(args) -> int:
 
         # ── Step B: PR 모니터링 HTML + CSV 생성 ──
         log("Step B: 자사 언급 기사 추출 + HTML/CSV 생성...")  #
-        rc = _run_step_script("pr/gen-pr-monitor.py", date, str(hours))  #
+        rc = _run_step_script("pr/render_pr_clipping.py", date, str(hours))  #
         if rc != 0:
-            err("Step B: gen-pr-monitor.py 실패")  #
+            err("Step B: render_pr_clipping.py 실패")  #
             status = 1
             return status  # (exit 1)
         try:
