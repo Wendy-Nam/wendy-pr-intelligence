@@ -46,7 +46,7 @@ TL;DR   이번 기간을 관통하는 외부 팩트 2~3개를 한 문단으로.
 출처 (62건)   [1] 매체·URL  [2] …          ← 본문의 모든 주장이 URL로 검증 가능
 ```
 
-### 자사 보도 모니터링 — `/pr-clipping`
+### 자사 보도 모니터링 — `/self-brief`
 
 ```
 [회사] · PR MONITORING               2026-06-16 · 자사 언급 21건
@@ -87,12 +87,43 @@ flowchart LR
 ## 설치
 
 ```
-/plugin marketplace add Wendy-Nam/pr-monitor-plugin
-/plugin install pr-monitor@news-monitor
+/plugin marketplace add Wendy-Nam/wendy-pr-intelligence
+/plugin install wendy-pr-intelligence@news-monitor
 ```
 
-첫 세션에서 `SessionStart` 훅이 워크스페이스에 `config/`·`data/` 골격 + Python venv 를 자동 구축합니다. 이메일 인증값은 설치 시 입력(건너뛰면 발송만 비활성). 이메일 채널은 `delivery.yaml` 의 `email.provider` 로 둘 중 하나:
+첫 세션에서 `SessionStart` 훅이 워크스페이스에 `config/`·`data/` 골격 + Python venv 를 자동 구축합니다. 이메일 인증값은 설치 시 입력(건너뛰면 발송만 비활성, 선택 사항). 이메일 채널은 `delivery.yaml` 의 `email.provider` 로 둘 중 하나:
 - **microsoft_graph**(Azure AD) · **smtp**(Gmail·O365·SES·사내메일 등 — Azure 없이 발송)
+
+### Claude Code 가 아닌 호스트에서 쓰기 (Codex · Hermes/OpenCode 등)
+
+엔진(`prmonitor/`)은 순수 Python CLI라 `PRM_LLM` 환경변수로 LLM 호출(뉴스레터 합성,
+기사 중요도 보강, PR 톤 판정·브리핑 산문 — 전부 `prmonitor/steps/llm_adapter.py` 하나를
+거친다)을 다른 CLI로 바꿀 수 있습니다. 매니페스트(`.claude-plugin/`)·훅(`hooks/`)·
+`agents/setup-bootstrap.md`(대화형 설정 마법사)만 Claude Code 전용이고, 나머지(설정
+스캐폴딩·수집·분류·렌더·발송)는 호스트 무관하게 동작합니다.
+(`agents/insight-synthesizer.md`·`agents/category-digest.md`는 이름과 달리 실제 Claude
+Code 서브에이전트가 아니라 평범한 프롬프트 텍스트 파일이라, 별도 이식 작업이 필요 없습니다.)
+
+| `PRM_LLM` | 대상 | 설정 |
+|---|---|---|
+| `claude` (기본) | Claude Code (`claude -p`) | 별도 설정 불필요 |
+| `codex` | OpenAI Codex CLI (`codex exec --full-auto`) | 필요 시 `PRM_CODEX_CMD` 로 플래그 override |
+| `hermes` (= `generic`) | 그 외 모든 에이전트 CLI (Hermes 에이전트·oh-my-openagent 역할·`opencode run` 등) | `PRM_SYNTH_CMD` 필수 — 예: `PRM_SYNTH_CMD='my-agent-cli run --prompt-file {prompt_file}'` (`{prompt_file}`/`{prompt}`/`{model}` 치환 가능) |
+
+```bash
+export PRM_LLM=codex
+python3 prmonitor_launch.py market-brief        # Claude Code 훅·매니페스트 없이 그대로 동작
+```
+
+모델 이름은 `PRM_SYNTH_MODEL`(합성)·`PRM_GLOSSARY_MODEL`(용어집)·`PRM_ENRICH_MODEL`(기사
+보강)·`PRM_HAIKU_MODEL`/`PRM_SONNET_MODEL`(PR 클리핑 톤·브리핑)로 백엔드 무관하게 override
+가능합니다.
+
+> [!IMPORTANT]
+> Claude Code 없이 실행할 땐 `SessionStart` 훅이 없어서 **최초 1회 스캐폴딩을 직접
+> 실행**해야 합니다: `python3 prmonitor_launch.py init --force` (config/data 골격 +
+> venv 생성). 이후엔 `/setup`·`/newsletter` 슬래시 명령이 없으니 위 CLI를 직접
+> 호출하거나 `routines/README.md` 의 크론 예시를 쓰세요.
 
 ## 첫 설정 — `/setup`
 
@@ -109,10 +140,10 @@ flowchart LR
 | 명령 | 동작 |
 |------|------|
 | `/newsletter [date] [hours]` | 인사이트 뉴스레터 생성·발송 (168=주간) |
-| `/pr-clipping [date] [hours]` | 자사 PR 클리핑 생성·발송 (`hours`=수집 범위) |
+| `/self-brief [date] [hours]` | 자사 PR 클리핑 생성·발송 (`hours`=수집 범위) |
 | `/setup` | 설정·상태·키·수신자·키워드·루틴 |
 
-자연어도 동작합니다("오늘 브리핑", "PR 모니터링", "상태"). 내부 CLI: `python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" <pre|post|pr|newsletter|init|paths>`.
+자연어도 동작합니다("오늘 브리핑", "PR 모니터링", "상태"). 내부 CLI: `python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" <pre|post|self-brief|self-brief-daily|market-brief|init|paths>` (`pr-clip*`·`pr-monitor`·`pr`·`newsletter` 는 예전 이름으로 당분간 그대로 동작).
 
 ## 커스터마이즈
 
@@ -132,6 +163,7 @@ flowchart LR
 | 출력 언어·문장 길이·금지어 | `config/style.yaml` |
 | 수신자·이메일 인증 | `config/delivery.yaml` |
 | 인사이트 품질용 예시 | `config/prompt-examples.yaml` |
+| HTML 디자인(색상·폰트·여백 등 서식) | `config/newsletter-theme.css` (신규 생성 — 없으면 번들 기본 테마 `skills/briefing-formatter/theme.css` 사용) |
 
 **자사 맥락**(`data/self-context/`)이 인사이트 "자사 함의" 품질을 좌우합니다 — `company-narrative.md`·`competitor-landscape.yaml`·`key-events.yaml`. PR 실행마다 분기 타임라인이 자동 누적되고, 월 1회 `self-context-updater` 에이전트로 정리·승격하는 걸 권장합니다(편집 판단이 필요해 자동 스케줄에 넣지 않음).
 

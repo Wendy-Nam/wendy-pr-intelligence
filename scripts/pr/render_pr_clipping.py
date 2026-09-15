@@ -13,7 +13,6 @@ import csv
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -21,30 +20,18 @@ import urllib.parse
 from datetime import date, datetime, timezone, timedelta
 from pathlib import Path
 
-
-def _resolve_claude_bin() -> str | None:
-    """claude CLI 경로를 이식성 있게 해석.
-    우선순위: 환경변수 CLAUDE_BIN → PATH(shutil.which) → 흔한 설치 경로.
-    없으면 None → LLM 기능은 규칙 기반으로 graceful fallback.
-    """
-    env = os.environ.get("CLAUDE_BIN")
-    if env and Path(env).exists():
-        return env
-    found = shutil.which("claude")
-    if found:
-        return found
-    for cand in ("~/.local/bin/claude", "~/.claude/local/claude", "/usr/local/bin/claude", "/opt/homebrew/bin/claude"):
-        p = Path(cand).expanduser()
-        if p.exists():
-            return str(p)
-    return None
-
-
-CLAUDE_BIN = _resolve_claude_bin()
-
 # ── 도메인팩 로드 (엔진은 하드코딩된 org 지식을 갖지 않는다) ──────────
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from prmonitor import domainpack
+from prmonitor.steps import llm_adapter
+
+_LLM_OK, _LLM_HINT = llm_adapter.available()
+# claude 백엔드는 짧은 별칭(haiku/sonnet)을 그대로 쓰고, 다른 백엔드는 그 CLI
+# 기본 모델에 맡긴다 — PRM_HAIKU_MODEL/PRM_SONNET_MODEL 로 백엔드 무관 override 가능.
+_TONE_MODEL = os.environ.get(
+    "PRM_HAIKU_MODEL", "haiku" if llm_adapter.backend_name() == "claude" else "")
+_NARRATIVE_MODEL = os.environ.get(
+    "PRM_SONNET_MODEL", "sonnet" if llm_adapter.backend_name() == "claude" else "")
 
 _PR_QUERIES = domainpack.load_pack("pr-queries")
 _TONE_LEXICON = domainpack.load_pack("tone-lexicon")
@@ -102,13 +89,15 @@ def _author_from_raw_html(html: str) -> str:
         return m.group(1) + " 기자"
     return ""
 
-# lib/ (gnews_resolver 등) 접근을 위해 scripts/ 디렉토리를 path에 추가
+# lib/ (gnews_resolver, rss_fetch 등) 접근을 위해 scripts/ 디렉토리를 path에 추가
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 try:
     import feedparser
+    from lib import rss_fetch
 except ImportError:
     feedparser = None
+    rss_fetch = None
 
 from lib.common import CACHE_DIR, PR_OUTPUT_DIR, PROCESSED_DIR, load_json, save_json
 PR_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -185,7 +174,7 @@ def classify_and_summarize_batch(rows: list[dict], n_direct: int) -> tuple[dict[
     반환: ({idx: 긍정|중립|부정}, {idx: 요약}). 실패 시 빈 dict → 규칙 fallback.
     (과거 톤·요약을 별도 haiku 2회 호출 → CLI 콜드스타트·시스템프롬프트 중복 제거)
     """
-    if not rows or not CLAUDE_BIN:
+    if not rows or not _LLM_OK:
         return {}, {}
     org_name = domainpack.branding("org_name")
     lines = [
@@ -214,16 +203,15 @@ def classify_and_summarize_batch(rows: list[dict], n_direct: int) -> tuple[dict[
             ev = (r.get("evidence", "") or "")[:100]
             lines.append(f"{i}: {r.get('title','')}" + (f" | {ev}" if ev else ""))
     try:
-        res = subprocess.run(
-            [CLAUDE_BIN, "-p", "\n".join(lines), "--model", "haiku"],
-            capture_output=True, text=True, timeout=180,
-        )
-        if res.returncode != 0:
-            print(f"  WARN: 톤·요약 판정 실패 (rc={res.returncode}) → 규칙 fallback", file=sys.stderr)
+        rc, stdout = llm_adapter.get_backend().run_text(
+            llm_adapter.SynthJob(prompt="\n".join(lines), model=_TONE_MODEL, text_mode=True),
+            timeout=180)
+        if rc != 0:
+            print(f"  WARN: 톤·요약 판정 실패 (rc={rc}) → 규칙 fallback", file=sys.stderr)
             return {}, {}
         tones: dict[int, str] = {}
         summaries: dict[int, str] = {}
-        for line in res.stdout.strip().splitlines():
+        for line in stdout.strip().splitlines():
             m = re.match(r"^(\d+)\s*[:：]\s*(긍정|중립|부정)(?:\s*\|\s*(.+))?", line.strip())
             if m:
                 idx = int(m.group(1))
@@ -322,7 +310,7 @@ def extract_summary(body: str, evidence: str) -> str:
 
 def fetch_gnews_pr(hours: int) -> list[dict]:
     """Google News RSS에서 자사 언급 기사 직접 수집 (도메인팩 자사명·별칭 쿼리)."""
-    if feedparser is None:
+    if feedparser is None or rss_fetch is None:
         print("  WARN: feedparser 없음 — pip install feedparser", file=sys.stderr)
         return []
 
@@ -337,7 +325,9 @@ def fetch_gnews_pr(hours: int) -> list[dict]:
             query=encoded, hl=q_cfg["hl"], gl=q_cfg["gl"]
         )
         try:
-            feed = feedparser.parse(url)
+            # rss_fetch: raw bytes + 3단계 XML 복구 폴백 (뉴스레터 수집기와 동일 로직) —
+            # feedparser.parse(url) 단독 호출보다 깨진 피드에서 훨씬 덜 유실된다.
+            feed = rss_fetch.fetch_parsed_feed(url, q_cfg["query"])
             entries = feed.entries or []
             print(f"  Google News [{q_cfg['query']}] → {len(entries)}건", file=sys.stderr)
         except Exception as e:
@@ -1030,20 +1020,19 @@ def main():
 
         narrative = ""
         try:
-            if not CLAUDE_BIN:
-                raise RuntimeError("claude CLI 미설치 — 규칙 fallback")
+            if not _LLM_OK:
+                raise RuntimeError(f"LLM 백엔드({llm_adapter.backend_name()}) 사용 불가 — {_LLM_HINT} (규칙 fallback)")
             # 90초는 CLI 콜드스타트+생성에 부족해 타임아웃 fallback(통계 한 줄)이
             # 자주 발생했음 → 300초. 핵심 산출물이므로 1회 재시도.
+            backend = llm_adapter.get_backend()
+            job = llm_adapter.SynthJob(prompt="\n".join(prompt_lines), model=_NARRATIVE_MODEL, text_mode=True)
             for attempt in (1, 2):
                 try:
-                    res = subprocess.run(
-                        [CLAUDE_BIN, "-p", "\n".join(prompt_lines), "--model", "sonnet"],
-                        capture_output=True, text=True, timeout=300,
-                    )
-                    if res.returncode == 0 and res.stdout.strip():
-                        narrative = res.stdout.strip()
+                    rc, stdout = backend.run_text(job, timeout=300)
+                    if rc == 0 and stdout.strip():
+                        narrative = stdout.strip()
                         break
-                    print(f"  WARN: 상단 브리핑 시도 {attempt} 실패 (rc={res.returncode})",
+                    print(f"  WARN: 상단 브리핑 시도 {attempt} 실패 (rc={rc})",
                           file=sys.stderr)
                 except subprocess.TimeoutExpired:
                     print(f"  WARN: 상단 브리핑 시도 {attempt} 타임아웃(300s)", file=sys.stderr)

@@ -1,6 +1,6 @@
 ---
 name: setup
-description: PR Monitor 설정 — 첫 설치(도메인팩 생성)·시크릿·수신자·키워드·루틴 등록·상태 확인. 리포트 생성은 /newsletter·/pr-clipping.
+description: PR Monitor 설정 — 첫 설치(도메인팩 생성)·시크릿·수신자·키워드·루틴 등록·상태 확인. 리포트 생성은 /newsletter·/self-brief.
 argument-hint: "[명령어] — 없으면 상태 + 미설정 시 설치 마법사"
 ---
 

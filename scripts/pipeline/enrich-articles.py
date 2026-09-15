@@ -22,15 +22,18 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
-import subprocess
 import sys
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from prmonitor import paths, domainpack
+from prmonitor.steps import llm_adapter
 
-ENRICH_MODEL = os.environ.get("PRM_ENRICH_MODEL", "claude-haiku-4-5")
+# claude 백엔드는 haiku 기본값을 쓰고, 다른 백엔드(codex/hermes)는 그 CLI 자체 기본
+# 모델에 맡긴다(빈 문자열 허용) — claude 전용 모델명을 다른 CLI에 그대로 넘기지 않는다.
+ENRICH_MODEL = os.environ.get(
+    "PRM_ENRICH_MODEL",
+    "claude-haiku-4-5" if llm_adapter.backend_name() == "claude" else "")
 
 
 def _industry() -> str:
@@ -84,9 +87,9 @@ def _build_input(articles: list[dict]) -> list[dict]:
 
 
 def _run_haiku(in_path: Path, out_path: Path) -> bool:
-    claude = shutil.which("claude")
-    if not claude:
-        print("enrich: claude CLI 없음 — 보강 skip (키워드 점수 폴백)")
+    llm_ok, llm_hint = llm_adapter.available()
+    if not llm_ok:
+        print(f"enrich: LLM 백엔드({llm_adapter.backend_name()}) 사용 불가 — {llm_hint} (보강 skip, 키워드 점수 폴백)")
         return False
     prompt = f"""너는 {_industry()} 산업 뉴스 분류기다. {in_path} 를 읽어라.
 각 기사에 대해 중요도(1~5)와 1줄요약을 매긴다.
@@ -102,18 +105,12 @@ def _run_haiku(in_path: Path, out_path: Path) -> bool:
     _thinking_raw = os.environ.get("PRM_ENRICH_THINKING", "0")
     env["MAX_THINKING_TOKENS"] = str(int(_thinking_raw)) if _thinking_raw.isdigit() else "0"
     env.pop("CLAUDE_EFFORT", None)
-    argv = [
-        claude, "-p", prompt,
-        "--model", ENRICH_MODEL,
-        "--effort", "low",
-        "--allowedTools", "Read,Write",
-        "--output-format", "stream-json", "--verbose",
-    ]
     try:
-        with open(log, "w", encoding="utf-8") as lf:
-            subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT, env=env, check=False)
-    except OSError as e:
-        print(f"enrich: claude 실행 실패 — {e} (보강 skip)")
+        llm_adapter.run_synthesis(llm_adapter.SynthJob(
+            prompt=prompt, model=ENRICH_MODEL, effort="low",
+            allowed_tools="Read,Write", log_path=log, env=env))
+    except (OSError, RuntimeError) as e:
+        print(f"enrich: LLM 호출 실패 — {e} (보강 skip)")
         return False
     return out_path.exists()
 

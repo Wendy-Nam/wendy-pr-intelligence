@@ -111,188 +111,22 @@ HTML_HEADER_NEWSLETTER = domainpack.branding("html_header_newsletter")
 HTML_FOOTER = domainpack.branding("html_footer")
 
 # ── CSS ────────────────────────────────────────────────────────
-CSS = """\
-  @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap");
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background-color: #ffffff !important;
-    font-family: 'Noto Sans KR', -apple-system, 'Pretendard', sans-serif;
-    color: #1c1917;
-    background: #fafaf9;
-    line-height: 1.7;
-    max-width: 740px;
-    margin: 0 auto;
-    padding: 40px 28px;
-  }
+# 서식(디자인)은 코드가 아니라 이 CSS 파일이 정본이다 — 색상·폰트·여백을 바꾸려면
+# Python 을 건드릴 필요 없이 CSS 만 고치면 된다. 워크스페이스에
+# config/newsletter-theme.css 가 있으면 그걸 그대로 쓰고(조직별 커스텀 테마),
+# 없으면 번들 기본 테마(theme.css, 이 파일과 같은 폴더)로 폴백한다.
+def load_theme_css() -> str:
+    candidates = [
+        Path("config/newsletter-theme.css"),
+        Path(__file__).resolve().parent / "theme.css",
+    ]
+    for c in candidates:
+        if c.is_file():
+            return c.read_text(encoding="utf-8")
+    return ""  # 테마 파일이 전부 없으면 스타일 없이 렌더(최후 폴백, 깨지지 않게)
 
-  /* ── Header ── */
-  .brand { font-size: 11px; font-weight: 700; color: #78716c; letter-spacing: 3px; margin-bottom: 6px; }
-  h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: #1c1917; }
-  .meta-line { font-size: 13px; color: #78716c; margin-top: 4px; margin-bottom: 20px; }
 
-  /* ── TL;DR ── */
-  .tldr {
-    background: #fff;
-    border: 1px solid #e7e5e4;
-    border-left: 4px solid #1c1917;
-    border-radius: 0 8px 8px 0;
-    padding: 18px 22px;
-    margin-bottom: 36px;
-    font-size: 15px;
-    color: #292524;
-  }
-  .tldr-lbl { font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #a8a29e; margin-bottom: 8px; }
-
-  /* ── Summary blocks ── */
-  .summary-block {
-    border-left: 4px solid #e7e5e4;
-    background: #fff;
-    border-radius: 0 8px 8px 0;
-    padding: 14px 18px;
-    margin-bottom: 12px;
-    border: 1px solid #e7e5e4;
-    border-left-width: 4px;
-  }
-  .summary-block .sb-hd {
-    display: flex; align-items: center;
-    font-size: 12px; font-weight: 700; color: #57534e;
-    margin-bottom: 8px;
-  }
-  .summary-block .sb-hd .cat-dot { margin-right: 10px; }
-  .summary-block p { font-size: 14px; color: #292524; line-height: 1.65; }
-  .summary-block p + p { margin-top: 18px; }
-
-  /* ── Section heading ── */
-  h2 {
-    font-size: 17px; font-weight: 800;
-    color: #1c1917;
-    margin: 40px 0 16px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid #1c1917;
-    letter-spacing: -0.3px;
-  }
-
-  /* ── Category group in headlines ── */
-  .hl-group { margin-bottom: 22px; }
-  .hl-group-hd {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 12px; font-weight: 700; color: #57534e;
-    margin-bottom: 8px;
-  }
-  .cat-dot {
-    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
-  }
-  .hl-group ul { list-style: none; }
-  .hl-group li {
-    font-size: 14px;
-    padding: 7px 0;
-    border-bottom: 1px solid #f5f5f4;
-    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-    color: #292524;
-  }
-  .hl-group li:last-child { border-bottom: none; }
-
-  /* ── Source chip ── */
-  .src-chip {
-    display: inline-flex; align-items: center; gap: 4px;
-    font-size: 11px; font-weight: 600;
-    background: #f5f5f4; color: #78716c;
-    padding: 2px 9px 2px 7px; border-radius: 20px;
-    text-decoration: none; border: 1px solid #e7e5e4;
-    white-space: nowrap; flex-shrink: 0;
-    transition: background 0.15s;
-    margin-right: 6px; margin-bottom: 4px;
-  }
-  .src-chip:hover { background: #e7e5e4; color: #44403c; }
-  .src-chip::before { content: '↗'; font-size: 10px; }
-
-  /* ── Insight card ── */
-  .insight {
-    background: #fff;
-    border: 1px solid #e7e5e4;
-    border-radius: 10px;
-    margin-bottom: 28px;
-    overflow: hidden;
-    box-shadow: 0 1px 3px rgba(0,0,0,.04);
-  }
-  .insight-hd {
-    background: #1c1917;
-    color: #fff;
-    padding: 14px 22px;
-    font-size: 15px; font-weight: 700;
-    line-height: 1.6;
-  }
-  .insight-num { color: #fbbf24; margin-right: 8px; }
-  .insight-body { padding: 16px 20px; }
-
-  .insight-sec { margin-bottom: 16px; }
-  .insight-sec:last-child { margin-bottom: 0; }
-  .sec-lbl {
-    font-size: 11px; font-weight: 800; letter-spacing: 1.5px;
-    margin-bottom: 4px;
-  }
-  .lbl-imp { color: #57534e; }
-  .lbl-obs { color: #57534e; }
-  .lbl-ctx { color: #57534e; }
-  .lbl-fact { color: #a8a29e; }
-
-  .insight-sec p { font-size: 14px; color: #292524; line-height: 1.65; }
-  .insight-sec p + p { margin-top: 10px; }
-
-  /* ── Fact list ── */
-  .fact-list { list-style: none; margin-top: 8px; }
-  .fact-item {
-    font-size: 13px; color: #44403c;
-    padding: 8px 0 8px 14px;
-    border-left: 3px solid #e7e5e4;
-    margin-bottom: 6px;
-    display: flex; align-items: flex-start; gap: 10px;
-    flex-wrap: wrap;
-  }
-  .fact-text { flex: 1; min-width: 0; line-height: 1.6; }
-
-  /* ── Source appendix ── */
-  .src-list { list-style: none; counter-reset: src; }
-  .src-list li {
-    counter-increment: src;
-    font-size: 13px; color: #57534e;
-    padding: 7px 0;
-    border-bottom: 1px solid #f5f5f4;
-    display: flex; gap: 10px; align-items: baseline;
-  }
-  .src-list li::before {
-    content: counter(src);
-    font-size: 11px; font-weight: 700;
-    color: #a8a29e;
-    background: #f5f5f4;
-    border-radius: 50%;
-    width: 20px; height: 20px;
-    display: inline-flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-  }
-  .src-list a { color: #2563eb; text-decoration: none; font-weight: 600; }
-  .src-list a:hover { text-decoration: underline; }
-  .src-list .src-title { color: #78716c; font-size: 12px; }
-
-  /* ── Footer ── */
-  .footer {
-    margin-top: 44px; padding-top: 16px;
-    border-top: 1px solid #e7e5e4;
-    font-size: 11px; color: #a8a29e;
-    line-height: 1.65;
-  }
-
-  /* 카테고리 dot 색은 categories.yaml 의 color 로 인라인 적용된다(도메인 무관). */
-
-  @media (max-width: 600px) {
-    body { padding: 20px 14px !important; }
-    h1   { font-size: 22px !important; }
-    .insight-hd  { padding: 12px 16px !important; font-size: 14px !important; }
-    .insight-body { padding: 16px !important; }
-    .summary-block { padding: 12px 14px !important; }
-    .footer { font-size: 10px !important; }
-    .fact-item { flex-direction: column !important; gap: 4px !important; }
-  }"""
+CSS = load_theme_css()
 
 
 # ── 날짜 유틸 ─────────────────────────────────────────────────

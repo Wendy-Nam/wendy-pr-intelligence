@@ -1,15 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
-  "name": "pr-monitor",
-  "displayName": "PR Monitor",
+  "name": "wendy-pr-intelligence",
+  "displayName": "Wendy PR Intelligence",
   "version": "0.5.10",
   "description": "뉴스 자동화 — 산업 인사이트 뉴스레터 + 자사 PR 모니터링. 도메인팩으로 어떤 조직/산업에도 재사용.",
   "author": {
     "name": "Wendy Nam",
     "email": "sharedwendy999@gmail.com"
   },
-  "homepage": "https://github.com/Wendy-Nam/pr-monitor-plugin",
-  "repository": "https://github.com/Wendy-Nam/pr-monitor-plugin",
+  "homepage": "https://github.com/Wendy-Nam/wendy-pr-intelligence",
+  "repository": "https://github.com/Wendy-Nam/wendy-pr-intelligence",
   "license": "MIT",
   "keywords": [
     "news",
@@ -22,26 +22,30 @@
   "userConfig": {
     "azure_tenant_id": {
       "type": "string",
-      "title": "Azure Tenant ID",
-      "description": "Microsoft Graph(Mail.Send)용 Azure AD 테넌트 ID. 이메일 발송 시 필요.",
-      "sensitive": true
+      "title": "Azure Tenant ID (선택)",
+      "description": "Microsoft Graph(Mail.Send)로 발송할 때만 필요. 건너뛰어도 됨 — SMTP는 config/delivery.yaml 또는 환경변수로 별도 설정 가능.",
+      "sensitive": true,
+      "required": false
     },
     "azure_client_id": {
       "type": "string",
-      "title": "Azure Client ID",
-      "description": "Azure AD 앱 클라이언트 ID.",
-      "sensitive": true
+      "title": "Azure Client ID (선택)",
+      "description": "Azure AD 앱 클라이언트 ID. Microsoft Graph 발송 시에만 필요.",
+      "sensitive": true,
+      "required": false
     },
     "azure_client_secret": {
       "type": "string",
-      "title": "Azure Client Secret",
-      "description": "Azure AD 앱 클라이언트 시크릿. OS 키체인에 저장됩니다.",
-      "sensitive": true
+      "title": "Azure Client Secret (선택)",
+      "description": "Azure AD 앱 클라이언트 시크릿. OS 키체인에 저장됩니다. Microsoft Graph 발송 시에만 필요.",
+      "sensitive": true,
+      "required": false
     },
     "email_from": {
       "type": "string",
-      "title": "발신 이메일 주소",
-      "description": "리포트 발신 계정 (예: marketing@your-org.com)."
+      "title": "발신 이메일 주소 (선택)",
+      "description": "리포트 발신 계정 (예: marketing@your-org.com). SMTP 사용 시 delivery.yaml에서 지정 가능.",
+      "required": false
     }
   }
 }

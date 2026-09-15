@@ -53,13 +53,14 @@ except ImportError as e:
 # ============================================================
 
 from lib.common import CONFIG_DIR, RAW_DIR, load_yaml, save_json
+from lib import rss_fetch
 
 SOURCES_YAML = CONFIG_DIR / "sources.yaml"
 OUTPUT_DIR = RAW_DIR
 
 FETCHER_VERSION = "0.3.0"
-USER_AGENT = "PRMonitor/0.2 (+news-monitor plugin)"
-REQUEST_TIMEOUT = 15
+USER_AGENT = rss_fetch.USER_AGENT
+REQUEST_TIMEOUT = rss_fetch.DEFAULT_TIMEOUT
 KST = tz.gettz("Asia/Seoul")
 
 # 섹션 내부 병렬 fetch worker 수.
@@ -302,147 +303,14 @@ def extract_domain(url: str) -> str:
 # RSS 폴링
 # ============================================================
 
-def _fix_common_xml_errors(raw: bytes) -> bytes:
-    """
-    RSS XML 에 자주 섞이는 invalid 문자를 제거/치환.
-
-    - 제어문자 (tab/newline/CR 제외) 제거: 많은 CMS 가 U+0001~U+0008 등을 흘림
-    - ampersand (&) 가 엔티티 아닌 raw 로 있으면 &amp; 로 (XML 에러 최다 원인)
-    - BOM 제거
-    """
-    # 1) BOM
-    if raw.startswith(b"\xef\xbb\xbf"):
-        raw = raw[3:]
-
-    # 2) 제어문자 제거 (XML 1.0 허용: tab=0x09, LF=0x0A, CR=0x0D, >=0x20)
-    #    바이트 레벨에서 처리
-    allowed_control = {0x09, 0x0A, 0x0D}
-    cleaned = bytearray()
-    for byte in raw:
-        if byte < 0x20 and byte not in allowed_control:
-            continue
-        cleaned.append(byte)
-    raw = bytes(cleaned)
-
-    # 3) 잘못된 ampersand 치환: &foo (엔티티 패턴 아님) → &amp;foo
-    #    너무 공격적이면 제대로 된 엔티티도 깰 수 있어 조심.
-    #    유명 엔티티 (&amp; &lt; &gt; &quot; &apos; &#xxx; &#xHHHH;) 는 유지.
-    try:
-        text = raw.decode("utf-8", errors="replace")
-        # 엔티티 참조가 아닌 & 를 모두 &amp; 로
-        text = re.sub(
-            r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)",
-            "&amp;",
-            text,
-        )
-        raw = text.encode("utf-8")
-    except Exception:
-        pass  # 인코딩 실패는 무시, 원본 유지
-
-    return raw
-
-
-def _fetch_raw_bytes(url: str, timeout: int = REQUEST_TIMEOUT,
-                     max_retries: int = 3) -> bytes | None:
-    """
-    requests 로 raw bytes 받기. 실패 시 None.
-
-    Connection reset / 일시적 5xx 는 지수 백오프로 재시도.
-    DNS 실패 / 4xx 는 즉시 포기.
-    """
-    backoff = 1.0
-    for attempt in range(max_retries):
-        try:
-            r = requests.get(url, headers={"User-Agent": USER_AGENT},
-                             timeout=timeout, allow_redirects=True)
-            # 4xx 는 재시도 의미 없음
-            if 400 <= r.status_code < 500:
-                return None
-            r.raise_for_status()
-            return r.content
-        except requests.exceptions.ConnectionError:
-            # Connection reset, DNS, etc. — 재시도할 가치 있음
-            if attempt == max_retries - 1:
-                return None
-            time.sleep(backoff)
-            backoff *= 2
-        except requests.exceptions.Timeout:
-            if attempt == max_retries - 1:
-                return None
-            time.sleep(backoff)
-            backoff *= 2
-        except Exception:
-            # 기타 (SSL, HTTP 5xx 등) — 재시도 1회만
-            if attempt > 0:
-                return None
-            time.sleep(backoff)
-    return None
-
-
-def _parse_with_fallback(raw: bytes, url: str, source_name: str) -> Any:
-    """
-    3단계 폴백:
-      1) feedparser 기본 (raw bytes)
-      2) _fix_common_xml_errors 적용 후 feedparser
-      3) lxml recover 모드 + feedparser (XML 심각하게 깨진 경우)
-    """
-    # 1차 시도
-    parsed = feedparser.parse(raw)
-    if parsed.entries:
-        return parsed
-
-    # 2차: 일반적 에러 수리
-    fixed = _fix_common_xml_errors(raw)
-    parsed = feedparser.parse(fixed)
-    if parsed.entries:
-        print(f"  INFO [{source_name}] XML 1차 보정 후 {len(parsed.entries)}건 복구",
-              file=sys.stderr)
-        return parsed
-
-    # 3차: lxml recover (설치되어 있으면)
-    try:
-        from lxml import etree
-        parser = etree.XMLParser(recover=True, encoding="utf-8")
-        root = etree.fromstring(fixed, parser=parser)
-        if root is not None:
-            reconstructed = etree.tostring(root, encoding="utf-8")
-            parsed = feedparser.parse(reconstructed)
-            if parsed.entries:
-                print(f"  INFO [{source_name}] lxml recover 로 {len(parsed.entries)}건 복구",
-                      file=sys.stderr)
-                return parsed
-    except ImportError:
-        pass   # lxml 없으면 skip
-    except Exception as e:
-        print(f"  WARN [{source_name}] lxml recover 에러: {e}", file=sys.stderr)
-
-    return parsed   # 빈 상태로 반환
-
-
 def fetch_feed(url: str, source_name: str, language: str,
                source_query: str | None, hours: int, source_tier: str,
                max_items: int = 20) -> list[Article]:
     """
-    RSS 피드 파싱. 망가진 XML 도 최대한 복구.
-
-    단계:
-      1) requests 로 raw bytes 받기
-      2) _parse_with_fallback 으로 3단계 파싱 시도
-      3) 실패하면 빈 리스트 + warn
+    RSS 피드 파싱. 망가진 XML 도 최대한 복구 (scripts/lib/rss_fetch.py 공용 로직 —
+    PR 클리핑 쪽 render_pr_clipping.py 의 Google News 수집도 같은 로직을 쓴다).
     """
-    # raw bytes 확보
-    raw = _fetch_raw_bytes(url)
-    if raw is None:
-        # 네트워크 레벨 실패
-        # feedparser 에 URL 직접 넘기는 최후 시도 (과거 동작 호환)
-        try:
-            parsed = feedparser.parse(url, agent=USER_AGENT,
-                                      request_headers={"User-Agent": USER_AGENT})
-        except Exception as e:
-            print(f"  WARN fetch 실패 [{source_name}]: {e}", file=sys.stderr)
-            return []
-    else:
-        parsed = _parse_with_fallback(raw, url, source_name)
+    parsed = rss_fetch.fetch_parsed_feed(url, source_name)
 
     if not parsed.entries:
         if parsed.bozo:

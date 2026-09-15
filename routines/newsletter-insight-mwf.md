@@ -11,10 +11,10 @@ description: 산업 인사이트 뉴스레터 — 월·수·금 09:30 (스케줄
 실행:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" newsletter
+python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" market-brief
 ```
 
-`prmonitor newsletter` 가 전체를 자동 처리한다:
+`prmonitor market-brief` 가 전체를 자동 처리한다:
 - 수집창은 config/pipelines.yaml 기준 자동 결정 (수·금 48h, 월 72h — 여기 박지 않는다)
 - 전처리(pre) → 인사이트 합성(claude -p headless) → 후처리(post)
 - 후처리가 품질 게이트 평가: 통과 시 자동 발송, 미통과 시 발송 보류 + data/output/REVIEW_NEEDED.md

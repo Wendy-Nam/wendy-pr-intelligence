@@ -24,21 +24,28 @@ import os
 from pathlib import Path
 
 
-def _env_path(name: str) -> Path | None:
-    val = os.environ.get(name)
-    return Path(val).expanduser().resolve() if val else None
+def _env_path(*names: str) -> Path | None:
+    """First set env var among `names`, resolved to an absolute Path."""
+    for name in names:
+        val = os.environ.get(name)
+        if val:
+            return Path(val).expanduser().resolve()
+    return None
 
 
 # prmonitor/paths.py -> parent.parent == repo root (dev) or plugin bundle root (installed).
 _BUNDLE_ROOT = Path(__file__).resolve().parent.parent
 
 # ── the three roots ───────────────────────────────────────────────────────────
-PLUGIN_ROOT: Path = _env_path("CLAUDE_PLUGIN_ROOT") or _BUNDLE_ROOT
-PROJECT_DIR: Path = _env_path("CLAUDE_PROJECT_DIR") or _BUNDLE_ROOT
-PLUGIN_DATA: Path = _env_path("CLAUDE_PLUGIN_DATA") or _BUNDLE_ROOT
+# Host-neutral PRM_* vars take priority so non-Claude-Code hosts (Codex,
+# OpenCode/oh-my-openagent, plain shell) can set them without pretending to
+# be Claude Code; CLAUDE_* stays supported for the plugin runtime.
+PLUGIN_ROOT: Path = _env_path("PRM_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT") or _BUNDLE_ROOT
+PROJECT_DIR: Path = _env_path("PRM_PROJECT_DIR", "CLAUDE_PROJECT_DIR") or _BUNDLE_ROOT
+PLUGIN_DATA: Path = _env_path("PRM_PLUGIN_DATA", "CLAUDE_PLUGIN_DATA") or _BUNDLE_ROOT
 
 #: True when running as an installed plugin (roots genuinely diverge).
-IS_PLUGIN: bool = _env_path("CLAUDE_PLUGIN_ROOT") is not None
+IS_PLUGIN: bool = _env_path("PRM_PLUGIN_ROOT", "CLAUDE_PLUGIN_ROOT") is not None
 
 # ── logic (read-only, under PLUGIN_ROOT) ──────────────────────────────────────
 SCRIPTS_DIR = PLUGIN_ROOT / "scripts"
