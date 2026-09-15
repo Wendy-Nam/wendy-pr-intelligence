@@ -46,7 +46,7 @@ TL;DR   이번 기간을 관통하는 외부 팩트 2~3개를 한 문단으로.
 출처 (62건)   [1] 매체·URL  [2] …          ← 본문의 모든 주장이 URL로 검증 가능
 ```
 
-### 자사 보도 모니터링 — `/pr-clipping`
+### 자사 보도 모니터링 — `/self-brief`
 
 ```
 [회사] · PR MONITORING               2026-06-16 · 자사 언급 21건
@@ -87,8 +87,8 @@ flowchart LR
 ## 설치
 
 ```
-/plugin marketplace add Wendy-Nam/pr-monitor-plugin
-/plugin install pr-monitor@news-monitor
+/plugin marketplace add Wendy-Nam/wendy-pr-intelligence
+/plugin install wendy-pr-intelligence@news-monitor
 ```
 
 첫 세션에서 `SessionStart` 훅이 워크스페이스에 `config/`·`data/` 골격 + Python venv 를 자동 구축합니다. 이메일 인증값은 설치 시 입력(건너뛰면 발송만 비활성, 선택 사항). 이메일 채널은 `delivery.yaml` 의 `email.provider` 로 둘 중 하나:
@@ -140,7 +140,7 @@ python3 prmonitor_launch.py market-brief        # Claude Code 훅·매니페스�
 | 명령 | 동작 |
 |------|------|
 | `/newsletter [date] [hours]` | 인사이트 뉴스레터 생성·발송 (168=주간) |
-| `/pr-clipping [date] [hours]` | 자사 PR 클리핑 생성·발송 (`hours`=수집 범위) |
+| `/self-brief [date] [hours]` | 자사 PR 클리핑 생성·발송 (`hours`=수집 범위) |
 | `/setup` | 설정·상태·키·수신자·키워드·루틴 |
 
 자연어도 동작합니다("오늘 브리핑", "PR 모니터링", "상태"). 내부 CLI: `python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" <pre|post|self-brief|self-brief-daily|market-brief|init|paths>` (`pr-clip*`·`pr-monitor`·`pr`·`newsletter` 는 예전 이름으로 당분간 그대로 동작).

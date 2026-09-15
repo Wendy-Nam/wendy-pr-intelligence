@@ -1,5 +1,5 @@
 ---
-name: pr-clipping
+name: self-brief
 description: 자사 PR 클리핑 생성·발송. 자사 언급 기사 수집 → 톤 판정 → HTML/CSV/XLSX → 발송 + 월별 누적.
 argument-hint: "[date] [hours] — 예: '2026-06-08 72' / '2026-06-08' / 빈칸(오늘·정책 시간창)"
 ---
