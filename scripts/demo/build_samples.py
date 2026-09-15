@@ -22,7 +22,7 @@ def module(name, path):
 def decorate(html):
     banner = '''<nav class="sample-nav" aria-label="샘플 탐색"><a href="./">← 샘플 목록</a><span>DEMO · 가상 기업·기사·수치로 만든 예시</span><a href="sources.html">샘플 데이터 안내</a></nav>'''
     css = '''<style>.sample-nav{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;padding:14px 0;margin-bottom:24px;border-bottom:1px solid #ddd;font:12px/1.6 system-ui;color:#655f56}.sample-nav a{color:#344d42}html{overflow-wrap:anywhere}img{max-width:100%}@media(max-width:600px){body{padding:18px 12px!important}.sample-nav{font-size:11px}}</style>'''
-    return html.replace('</head>', css+'</head>').replace('<body>', '<body>'+banner)
+    return re.sub(r'(<body\b[^>]*>)', lambda m: m.group(1)+banner, html.replace('</head>', css+'</head>'), count=1)
 
 
 def main():
@@ -55,6 +55,7 @@ def main():
             category_summary=cats,all_sources=sources,company_glossary=[dict(name='Northstar Cell',desc='가상의 배터리 셀 개발사. 저온 성능과 시험 생산을 연구한다.'),dict(name='Voltway',desc='가상의 상용차 충전 사업자. 물류 거점 충전소를 운영한다.')])
         fmt=module('demo_formatter', ROOT/'skills/briefing-formatter/format.py')
         html=fmt.build_html(briefing,DATE,collection_start='2026-09-14',foreign_count=4,domestic_count=2,hours=48)
+        html=re.sub(r'생성 \d{4}-\d{2}-\d{2} \d{2}:\d{2} KST', '샘플 기준일 '+DATE, html)
         (OUT/'market-brief.html').write_text(decorate(html))
         (OUT/'market-brief.sample.json').write_text(json.dumps(briefing,ensure_ascii=False,indent=2)+'\n')
         pr_items=[
