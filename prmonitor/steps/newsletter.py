@@ -45,7 +45,6 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
 import subprocess
 import sys
 import time
@@ -54,6 +53,7 @@ from types import SimpleNamespace
 
 from .. import domainpack, paths
 from ..common import err, log, ok, require_file, resolve_hours, warn
+from . import llm_adapter
 
 # 합성 모델 정책 — 엔진 설정(도메인 지식 아님). 한 곳에서 바꾼다.
 # 기본값은 env PRM_SYNTH_MODEL 또는 agent frontmatter 로 덮을 수 있다.
@@ -221,7 +221,7 @@ def _glossary_prompt(date, briefing_path, ctx_path, gloss_out) -> str:
 {gloss_out} 에 JSON 배열로 저장: [{{"name":"...","desc":"..."}}]. 설명·잡담 없이 파일만 쓴다."""
 
 
-def _run_parallel_synth(date, claude_bin, synth_model, synth_effort, synth_env):
+def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
     """교차 호출 1개 + 카테고리별 호출 N개를 동시 실행하고 briefing 으로 머지한다.
 
     카테고리 동향이 출력의 대부분이므로 카테고리별로 쪼개 병렬화하면 wall-clock 이
@@ -272,10 +272,6 @@ def _run_parallel_synth(date, claude_bin, synth_model, synth_effort, synth_env):
     def _run_one(job):
         label, out, prompt = job
         logp = paths.LOGS_DIR / f"synth-{label}-{date}.log"
-        argv = [claude_bin, "-p", prompt, "--model", synth_model,
-                "--effort", synth_effort, "--allowedTools", "Read,Write,Edit",
-                "--add-dir", str(paths.PROJECT_DIR),  # 워크스페이스 출력 Write 허용
-                "--output-format", "stream-json", "--verbose"]
         # 일시 실패(API 529 Overloaded 등)에 재시도 — 실패하면 그 카테고리가 통째로
         # 드롭되므로 백오프 재시도로 방어한다.
         for attempt in range(3):
@@ -284,10 +280,12 @@ def _run_parallel_synth(date, claude_bin, synth_model, synth_effort, synth_env):
             except FileNotFoundError:
                 pass
             try:
-                with open(logp, "w", encoding="utf-8") as lf:
-                    subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT,
-                                   env=synth_env, check=False)
-            except OSError as e:
+                llm_adapter.run_synthesis(
+                    prompt, model=synth_model, effort=synth_effort,
+                    allowed_tools="Read,Write,Edit",
+                    add_dir=str(paths.PROJECT_DIR),  # 워크스페이스 출력 Write 허용
+                    log_path=logp, env=synth_env)
+            except (OSError, RuntimeError) as e:
                 warn(f"합성 호출 실패 [{label}] — {e}")
             if out.exists():
                 return label, True
@@ -351,15 +349,14 @@ def _run_parallel_synth(date, claude_bin, synth_model, synth_effort, synth_env):
         gloss_out.unlink()
     except FileNotFoundError:
         pass
-    gargv = [claude_bin, "-p", _glossary_prompt(date, briefing_path, ctx_path, gloss_out),
-             "--model", _safe_model(os.environ.get("PRM_GLOSSARY_MODEL"), "claude-sonnet-4-6"),
-             "--effort", "low", "--allowedTools", "Read,Write",
-             "--add-dir", str(paths.PROJECT_DIR),
-             "--output-format", "stream-json", "--verbose"]
+    glossary_model = _safe_model(os.environ.get("PRM_GLOSSARY_MODEL"), _SYNTH_MODEL_DEFAULT)
+    glossary_prompt = _glossary_prompt(date, briefing_path, ctx_path, gloss_out)
     for attempt in range(2):  # 529 등 일시 실패 1회 재시도
         try:
-            with open(paths.LOGS_DIR / f"synth-glossary-{date}.log", "w", encoding="utf-8") as lf:
-                subprocess.run(gargv, stdout=lf, stderr=subprocess.STDOUT, env=synth_env, check=False)
+            llm_adapter.run_synthesis(
+                glossary_prompt, model=glossary_model, effort="low",
+                allowed_tools="Read,Write", add_dir=str(paths.PROJECT_DIR),
+                log_path=paths.LOGS_DIR / f"synth-glossary-{date}.log", env=synth_env)
             if gloss_out.exists():
                 gl = json.loads(gloss_out.read_text(encoding="utf-8"))
                 if isinstance(gl, list) and gl:
@@ -368,7 +365,7 @@ def _run_parallel_synth(date, claude_bin, synth_model, synth_effort, synth_env):
                         json.dumps(briefing, ensure_ascii=False, indent=2), encoding="utf-8")
                     log(f"용어집 보강: {len(gl)}곳")
                 break
-        except (OSError, json.JSONDecodeError) as e:
+        except (OSError, RuntimeError, json.JSONDecodeError) as e:
             warn(f"용어집 보강 실패 — {e}")
         if attempt < 1:
             time.sleep(5)
@@ -459,11 +456,16 @@ def run(args) -> int:
         print(f"  data/processed/newsletter-facts-{date}.json")
         return _finish(0)
 
-    # ── Step 7: 인사이트 합성 (Claude) ─────────────────────────── ─
-    # Guard missing claude binary with a clear error.
-    claude_bin = shutil.which("claude")
-    if not claude_bin:
-        err("claude CLI 없음. https://docs.claude.com 참고해 Claude Code 설치.")
+    # ── Step 7: 인사이트 합성 (LLM) ─────────────────────────────── ─
+    # Guard missing LLM backend with a clear error. Backend selectable via
+    # PRM_LLM (default "claude"); see prmonitor/steps/llm_adapter.py.
+    llm_ok, llm_hint = llm_adapter.available()
+    if not llm_ok:
+        if llm_adapter.backend() == "claude":
+            err("claude CLI 없음. https://docs.claude.com 참고해 Claude Code 설치. "
+                "(다른 LLM 백엔드는 PRM_LLM=generic + PRM_SYNTH_CMD 로 설정 가능)")
+        else:
+            err(f"LLM 백엔드({llm_adapter.backend()}) 사용 불가 — {llm_hint}")
         return _finish(1)
 
     prompt = _synth_prompt(date)
@@ -483,15 +485,6 @@ def run(args) -> int:
     # agent 모드 기본 extended thinking 이 30분 폭주를 일으킴 — effort 로 캡한다.
     # 입력(synthesis-context)이 작아 low 로도 Sonnet 교차합성 품질은 유지된다.
     synth_effort = _safe_effort(os.environ.get("PRM_SYNTH_EFFORT"), "medium")
-    claude_argv = [
-        claude_bin, "-p", prompt,
-        "--model", synth_model,
-        "--effort", synth_effort,
-        "--allowedTools", "Read,Write,Edit,Bash",
-        "--add-dir", str(paths.PROJECT_DIR),  # 워크스페이스 briefing Write 허용
-        "--output-format", "stream-json",
-        "--verbose",
-    ]
     # 진짜 병목은 headless extended thinking — rate-limit 시 6900토큰이 9분으로 불어난다.
     # 합성은 추론이 아니라 스펙대로의 구조적 생성이라 thinking 이 품질을 못 사준다.
     # MAX_THINKING_TOKENS=0 으로 완전 비활성(중간값은 --effort 에 밀려 무시됨). 품질은
@@ -510,18 +503,19 @@ def run(args) -> int:
         # 병렬 분리: 교차 호출 1 + 카테고리별 N 동시 → briefing 머지(아래 require_file 가 판정).
         log("Step 7: 병렬 분리 합성 (교차 1 + 카테고리별 N, 동시 실행)...")
         try:
-            _run_parallel_synth(date, claude_bin, synth_model, synth_effort, synth_env)
+            _run_parallel_synth(date, synth_model, synth_effort, synth_env)
         except Exception as e:  # noqa: BLE001 — briefing 존재 여부로 최종 판단
             warn(f"병렬 합성 예외 — {e} (briefing 산출 여부로 판단)")
     else:
       try:
-        with open(output_log, "w", encoding="utf-8") as logf:
-            proc = subprocess.run(claude_argv, stdout=logf, env=synth_env,
-                                  stderr=subprocess.STDOUT, check=False)
-        claude_rc = proc.returncode
-      except OSError as e:
+        claude_rc = llm_adapter.run_synthesis(
+            prompt, model=synth_model, effort=synth_effort,
+            allowed_tools="Read,Write,Edit,Bash",
+            add_dir=str(paths.PROJECT_DIR),  # 워크스페이스 briefing Write 허용
+            log_path=output_log, env=synth_env)
+      except (OSError, RuntimeError) as e:
         # Spawn itself failed (e.g. binary vanished between which() and run()).
-        warn(f"claude 실행 실패 — {e} (로그: {output_log})")
+        warn(f"LLM 호출 실패 — {e} (로그: {output_log})")
         claude_rc = 1
     if claude_rc != 0:
         warn(f"claude 종료코드 {claude_rc} — briefing 산출 여부로 판단 (로그: {output_log})")

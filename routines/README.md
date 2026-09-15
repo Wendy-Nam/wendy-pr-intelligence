@@ -55,3 +55,28 @@ Claude Code Routines (데스크톱 앱)
 
 각 루틴을 **Run Now 로 1회 수동 실행**해 권한을 미리 허용해둔다.
 이후 예약 실행은 저장된 권한을 자동 적용해 사용자 확인 없이 끝까지 돈다.
+
+## Claude Code 밖에서 스케줄링하기 (Codex/OpenCode/일반 크론)
+
+scheduled-tasks MCP·데스크톱 Routines는 Claude Code 전용이라 다른 호스트에는
+없다. 엔진(`prmonitor/`)은 순수 CLI라 아무 스케줄러에서나 그대로 돌릴 수 있다:
+
+```
+# 매일 10:30, 09:30 같은 형태로 그냥 시스템 크론에 등록
+30 10 * * 1-5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor pr-daily
+30  9 * * 1,3,5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor newsletter
+```
+
+Claude Code가 아닌 호스트(예: 헤르메스류 에이전트)를 합성 백엔드로 쓰려면
+`PRM_LLM=generic` + `PRM_SYNTH_CMD`로 지정한다 (`prmonitor/steps/llm_adapter.py`
+참고):
+
+```
+export PRM_LLM=generic
+export PRM_SYNTH_CMD="my-agent-cli run --prompt-file {prompt_file}"
+```
+
+트리거 자체를 별도 크론 없이 "메일 예약발송" 같은 이미 있는 스케줄링 기능에
+얹는 방법도 있다 — 예를 들어 헤르메스류 에이전트가 이메일의 임시저장/예약발송
+기능으로 정해진 시각에 자신을 깨우게 하고, 그 트리거가 위 크론 명령을 실행하는
+식. 시스템 크론이 없는 환경에서 쓸 만한 대안이다.
