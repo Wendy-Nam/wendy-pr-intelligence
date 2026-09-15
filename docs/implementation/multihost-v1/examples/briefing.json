@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "run_id": "20260915T010000Z-0123456789ab",
+  "pipeline": "market",
+  "revision": 1,
+  "payload": {
+    "tldr": [
+      {
+        "text": "배터리 시제품 공개와 물류 거점 충전소 개설이 이어졌다.",
+        "refs": [
+          "a_d96533b21ac572666d0b0ead11b5684d",
+          "a_3cf20191c20c24d21474b2b99b8a3fa4"
+        ]
+      }
+    ],
+    "insights": [
+      {
+        "id": "insight-1",
+        "title": "배터리와 충전 운영 조건을 함께 점검",
+        "observation": [
+          {
+            "text": "Northstar Cell은 저온 충전 시제품을 공개했다.",
+            "refs": [
+              "a_d96533b21ac572666d0b0ead11b5684d"
+            ]
+          },
+          {
+            "text": "Voltway는 물류 거점 충전소를 개설했다.",
+            "refs": [
+              "a_3cf20191c20c24d21474b2b99b8a3fa4"
+            ]
+          }
+        ],
+        "implication": [
+          {
+            "text": "자사 배송 고객의 충전 조건을 점검할 수 있다. 시제품의 양산 일정은 후속 확인 대상이다.",
+            "basis_refs": [
+              "a_d96533b21ac572666d0b0ead11b5684d",
+              "a_3cf20191c20c24d21474b2b99b8a3fa4"
+            ],
+            "uncertainty": "needs_confirmation"
+          }
+        ]
+      }
+    ],
+    "category_summary": [
+      {
+        "category_id": "battery",
+        "paragraphs": [
+          {
+            "text": "Northstar Cell은 저온 충전 시제품을 공개했다. 양산 일정은 미정이다.",
+            "refs": [
+              "a_d96533b21ac572666d0b0ead11b5684d"
+            ]
+          }
+        ],
+        "covered_refs": [
+          "a_d96533b21ac572666d0b0ead11b5684d"
+        ]
+      },
+      {
+        "category_id": "charging",
+        "paragraphs": [
+          {
+            "text": "Voltway는 물류 거점 충전소 운영을 시작했다.",
+            "refs": [
+              "a_3cf20191c20c24d21474b2b99b8a3fa4"
+            ]
+          }
+        ],
+        "covered_refs": [
+          "a_3cf20191c20c24d21474b2b99b8a3fa4"
+        ]
+      }
+    ],
+    "headlines": [
+      {
+        "ref": "a_d96533b21ac572666d0b0ead11b5684d",
+        "text": "Northstar Cell, 저온 충전 시제품 공개",
+        "category_id": "battery"
+      },
+      {
+        "ref": "a_3cf20191c20c24d21474b2b99b8a3fa4",
+        "text": "Voltway, 물류 거점 충전소 개설",
+        "category_id": "charging"
+      }
+    ],
+    "company_glossary": [],
+    "landscape_update_points": []
+  }
+}

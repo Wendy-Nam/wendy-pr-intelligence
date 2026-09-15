@@ -39,8 +39,12 @@ import os
 import shlex
 import shutil
 import subprocess
+import threading
 from dataclasses import dataclass
 from pathlib import Path
+
+_TEMP_PROMPT_FILES: set[str] = set()
+_TEMP_PROMPT_FILES_LOCK = threading.Lock()
 
 
 @dataclass(frozen=True)
@@ -86,10 +90,13 @@ class LLMBackend:
         success by whether the expected output file appeared).
         """
         argv = self._argv(job)
-        with open(job.log_path, "w", encoding="utf-8") as lf:
-            proc = subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT,
-                                   env=job.env, check=False)
-        return proc.returncode
+        try:
+            with open(job.log_path, "w", encoding="utf-8") as lf:
+                proc = subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT,
+                                      env=job.env, check=False)
+            return proc.returncode
+        finally:
+            _cleanup_prompt_files(argv)
 
     def run_text(self, job: SynthJob, timeout: float | None = None) -> tuple[int, str]:
         """Run the job and return (returncode, stdout) directly — for callers
@@ -97,9 +104,12 @@ class LLMBackend:
         (no job.log_path needed here).
         """
         argv = self._argv(job)
-        proc = subprocess.run(argv, capture_output=True, text=True,
-                               env=job.env, timeout=timeout, check=False)
-        return proc.returncode, proc.stdout
+        try:
+            proc = subprocess.run(argv, capture_output=True, text=True,
+                                  env=job.env, timeout=timeout, check=False)
+            return proc.returncode, proc.stdout
+        finally:
+            _cleanup_prompt_files(argv)
 
 
 class ClaudeBackend(LLMBackend):
@@ -148,7 +158,8 @@ class CodexBackend(LLMBackend):
         cmd = os.environ.get("PRM_CODEX_CMD", "")
         if cmd:
             return _build_argv(cmd, job)
-        argv = ["codex", "exec", "--full-auto"]
+        # Codex CLI 0.149.1 rejects --full-auto; keep the portable exec form.
+        argv = ["codex", "exec"]
         if job.model:
             argv += ["--model", job.model]
         argv.append(job.prompt)
@@ -196,6 +207,10 @@ def _build_argv(cmd: str, job: SynthJob) -> list[str]:
     """Substitute {prompt}/{prompt_file}/{model} placeholders into a command
     template, writing a temp file for {prompt_file} when it's used.
     """
+    try:
+        template = shlex.split(cmd)
+    except ValueError as e:
+        raise RuntimeError(f"invalid PRM_SYNTH_CMD template: {e}") from e
     subst = {"model": job.model}
     if "{prompt_file}" in cmd:
         import tempfile
@@ -204,13 +219,29 @@ def _build_argv(cmd: str, job: SynthJob) -> list[str]:
         tmp.write(job.prompt)
         tmp.close()
         subst["prompt_file"] = tmp.name
+        with _TEMP_PROMPT_FILES_LOCK:
+            _TEMP_PROMPT_FILES.add(tmp.name)
     if "{prompt}" in cmd:
         subst["prompt"] = job.prompt
-    rendered = cmd.format(**{k: v for k, v in subst.items() if f"{{{k}}}" in cmd})
-    argv = shlex.split(rendered)
+    try:
+        argv = [token.format(**subst) for token in template]
+    except KeyError as e:
+        raise RuntimeError(f"unknown PRM_SYNTH_CMD placeholder: {{{e.args[0]}}}") from e
     if "{prompt_file}" not in cmd and "{prompt}" not in cmd:
         argv.append(job.prompt)
     return argv
+
+
+def _cleanup_prompt_files(argv: list[str]) -> None:
+    """Remove only prompt files created for this subprocess invocation."""
+    with _TEMP_PROMPT_FILES_LOCK:
+        owned = set(argv) & _TEMP_PROMPT_FILES
+        _TEMP_PROMPT_FILES.difference_update(owned)
+    for name in owned:
+        try:
+            Path(name).unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def backend_name() -> str:

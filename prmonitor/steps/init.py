@@ -22,7 +22,9 @@ def run(args=None) -> int:
     paths.ensure_dirs()
 
     seeded: list[str] = []
+    upgraded: list[str] = []
     if paths.CONFIG_TEMPLATES.is_dir():
+        from ..services.setup import upgrade_config
         for tmpl in sorted(paths.CONFIG_TEMPLATES.glob("*.yaml")):
             # Never seed a secrets file; that path goes through userConfig→keychain.
             if tmpl.name == "delivery.yaml":
@@ -31,6 +33,11 @@ def run(args=None) -> int:
             if not dest.exists():
                 shutil.copy2(tmpl, dest)
                 seeded.append(dest.name)
+            elif tmpl.name == "runtime.yaml":
+                # ponytail: only runtime.yaml carries the schema; domain packs are
+                # user content and are never merged from templates.
+                if upgrade_config(tmpl, dest)["changed"]:
+                    upgraded.append(dest.name)
 
     first_run = not paths.INIT_MARKER.exists()
     if first_run:
@@ -53,11 +60,15 @@ def run(args=None) -> int:
             f"(설정 스캐폴딩은 완료됐으니 채팅은 계속 가능합니다.)",
             file=sys.stderr,
         )
+        if getattr(args, "strict", False):
+            return 20
 
-    if first_run or seeded:
+    if first_run or seeded or upgraded:
         msg = "[prmonitor] 초기화 완료"
         if seeded:
             msg += f" — config 시드: {', '.join(seeded)}"
+        if upgraded:
+            msg += f" — config 스키마 보강: {', '.join(upgraded)}"
         print(msg, file=sys.stderr)
     return 0
 

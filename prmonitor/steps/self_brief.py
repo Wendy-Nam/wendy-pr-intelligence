@@ -30,6 +30,7 @@ absent (matching the .sh's "artifact already written" failure policy).
 """
 from __future__ import annotations
 
+import csv
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -68,17 +69,29 @@ def _run_step_script(script_rel: str, *script_args: str) -> int:
     return r.returncode
 
 
-def _count_csv_rows(csv_path: Path) -> int:
-    """PR 건수 = CSV 행 수 - 1 (헤더). 음수면 0. Ports (``wc -l`` - 1)."""
-    if not csv_path.is_file():
-        return 0
-    try:
-        with open(csv_path, encoding="utf-8-sig", newline="") as f:
-            line_count = sum(1 for _ in f)
-    except OSError:
-        return 0
-    pr_count = line_count - 1
-    return pr_count if pr_count > 0 else 0
+def _self_report(csv_path: Path):
+    """PR 건수·톤 분포를 canonical self workflow 로 산출한다 (F14).
+
+    ``wc -l`` 포트는 본문에 개행이 들어간 셀에서 건수를 부풀렸다. 여기서는 CSV 를
+    레코드 단위로 읽어 ``services.self_workflow.prepare_self_report`` 에 넘긴다 —
+    레코드 판정/집계는 canonical 서비스가 단독으로 소유하고, 이 래퍼는 레거시
+    아티팩트를 그 입력 형태로 맞추기만 한다. CSV 는 이미 자사 범위로 좁혀진
+    산출물이므로 별칭 재필터 없이(빈 scope) 넘긴다.
+    """
+    from ..services.self_workflow import prepare_self_report
+
+    rows = []
+    if csv_path.is_file():
+        try:
+            with open(csv_path, encoding="utf-8-sig", newline="") as f:
+                rows = list(csv.DictReader(f))
+        except OSError:
+            rows = []
+    articles = [{"id": r.get("URL", ""), "title": r.get("제목", "") or "",
+                 "summary": r.get("맥락", "") or "", "tone": r.get("톤", "") or "",
+                 "source_name": r.get("매체", "") or "", "url": r.get("URL", "")}
+                for r in rows]
+    return prepare_self_report(articles, company_aliases=[])
 
 
 def _write_exec_log(*, date: str, run_id: str, started_at: str, status: int,
@@ -113,6 +126,7 @@ def run(args) -> int:
     """
     # ── 인자 파싱 — DATE from args.date; no --no-email flag here ──
     date = args.date
+    no_email = bool(getattr(args, "no_email", False))
 
     # 수집 윈도우: 인자로 명시되면 그것을, 없으면 config 정책(월요일 monday_hours).
     hours = getattr(args, "hours", None)
@@ -138,6 +152,10 @@ def run(args) -> int:
     # trap 'write_exec_log $?' EXIT → try/finally. status tracks the
     # would-be exit code so the log records success/failure like $? did.
     status = 0
+    tone_counts: dict = {}
+    # Canonical run/job ledger via the engine facade (same path as `prmonitor run`).
+    from ..services.engine import close_legacy_run, open_legacy_run
+    ledger = open_legacy_run("self", date=date, hours=hours, delivery_requested=not no_email)
     try:
         log(f"=== PR 모니터링 시작 ({date}, {hours}h) ===")  #
         if log_hours_note:  #
@@ -170,8 +188,10 @@ def run(args) -> int:
             return status
         ok("Step B: PR 모니터링 생성 완료")  #
 
-        # 건수 파악: CSV 행 수 - 1.
-        pr_count = _count_csv_rows(pr_csv)
+        # 건수 파악: canonical self workflow 의 레코드 집계.
+        report = _self_report(pr_csv)
+        pr_count = report.counts["total"]
+        tone_counts = report.counts["tones"]
 
         # ── Step C: PR 월별 누적 ──
         monthly = date[:7]  # ${DATE:0:7}
@@ -204,8 +224,10 @@ def run(args) -> int:
         # ${SUBJECT_TPL//{date}/$DATE} ; ${...//{count}/$PR_COUNT}
         subject = subject_tpl.replace("{date}", date).replace("{count}", str(pr_count))
         pr_xlsx = paths.PR_OUTPUT_DIR / f"pr-monitoring-{date}.xlsx"  #
-        # NO_EMAIL skip path is unreachable here (no --no-email flag).
-        send_html_email(email_group, subject, pr_html, pr_xlsx)  #
+        if no_email or not pipeline_cfg(PIPELINE, "send_email", True):
+            log("Step D: 이메일 발송 skip")
+        else:
+            send_html_email(email_group, subject, pr_html, pr_xlsx)  #
 
         # ── 완료 ──
         cleanup_retention()  #
@@ -217,6 +239,10 @@ def run(args) -> int:
         return status
     finally:
         # trap 'write_exec_log $?' EXIT — runs on every exit path.
+        close_legacy_run(ledger, succeeded=status == 0,
+                         result={'date': date, 'hours': hours, 'pr_count': pr_count,
+                                 'tones': tone_counts}
+                         if status == 0 else {'code': 'SELF_BRIEF_FAILED', 'status': status})
         _write_exec_log(
             date=date, run_id=run_id, started_at=started_at, status=status,
             hours=hours, pr_count=pr_count, html=pr_html, csv=pr_csv,

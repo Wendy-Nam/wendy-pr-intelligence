@@ -22,16 +22,23 @@ Notable contract-driven deltas from the .sh (behaviour identical, paths only):
     live under ``paths.SCRIPTS_DIR``.
   - No bash/awk/date/trap: subprocess.run([...]) with explicit argv,
     datetime/time for timestamps, try/finally for the EXIT trap.
+  - 게이트는 canonical 서비스가 소유한다: schema/ref/category/coverage 검증은
+    ``prmonitor.validation.validate_briefing``, 발송 직전 hash 신선도는
+    ``deliverable_is_current``, HELD 표식은 ``prmonitor.render.HELD_WATERMARK``.
+    이 모듈은 레거시 입력을 canonical 형태로 맞추는 얇은 래퍼일 뿐이다.
   - The inline ``"$PY" -c`` count + quality-warning reads (.sh lines 72-95,
     126-132) are computed in-process here (same logic, no subprocess).
 """
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import time
 from datetime import datetime
 
 from .. import paths
+from ..render import HELD_WATERMARK
+from ..validation import deliverable_is_current, validate_briefing
 from ..common import (
     err,
     load_json,
@@ -45,6 +52,44 @@ from ..common import (
 )
 
 QW_THRESHOLD = 5  # — 품질 경고 임계
+
+
+def _canonical_briefing(briefing: dict) -> dict:
+    """뉴스레터 briefing → canonical validator 형태.
+
+    레거시 briefing 은 출처를 ``insight["facts"][i]["ref"]`` 로 담는다
+    (resolve-refs 가 id 로 조인하는 그 필드). validation.validate_briefing 은
+    ``insight["refs"]`` 를 본다 — 여기서만 얕게 변환하고 게이트 로직은
+    canonical 서비스가 전담한다.
+    """
+    insights = briefing.get("insights") if isinstance(briefing, dict) else None
+    return {
+        "tldr": briefing.get("tldr") if isinstance(briefing, dict) else None,
+        "insights": [
+            {"observation": i.get("observation"),
+             "refs": [f.get("ref") for f in (i.get("facts") or [])
+                      if isinstance(f, dict) and f.get("ref")]}
+            for i in (insights or []) if isinstance(i, dict)
+        ],
+        "category_summary": (briefing.get("category_summary") or []) if isinstance(briefing, dict) else [],
+    }
+
+
+def _validation_inputs(facts: dict) -> tuple[set[str], set[str]]:
+    """facts → (article_ids, category_ids). 기사가 있는 카테고리만 briefing 필수.
+
+    ``uncategorized`` 는 분류 실패 버킷이라 뉴스레터 섹션이 아니다 — 기대 집합에서 제외.
+    """
+    article_ids, category_ids = set(), set()
+    for cat in facts.get("categories", []) or []:
+        if not isinstance(cat, dict):
+            continue
+        cat_facts = [f for f in (cat.get("facts") or []) if isinstance(f, dict)]
+        article_ids |= {f["id"] for f in cat_facts if f.get("id")}
+        cid = cat.get("category_id")
+        if cid and cid != "uncategorized" and cat_facts:
+            category_ids.add(cid)
+    return article_ids, category_ids
 
 
 def _compute_counts(date_str: str) -> tuple[int, int, str]:
@@ -84,18 +129,32 @@ def _compute_counts(date_str: str) -> tuple[int, int, str]:
 def _quality_warning_count(date_str: str) -> int:
     """품질 경고 JSON 길이 — ports the inline ``"$PY" -c``.
 
-    파일 없음/파싱 실패 → 0 ( ``except: print(0)``).
+    파일 없음·파싱 실패·비배열은 검증 실패다. 품질 게이트를 건너뛰고
+    발송하는 것보다 보류하는 편이 안전하다.
     """
     qw_file = paths.NEWSLETTER_OUTPUT_DIR / f".quality-warnings-{date_str}.json"
-    try:
-        warnings = load_json(qw_file)
-    except Exception:
-        return 0
+    warnings = load_json(qw_file)
+    if not isinstance(warnings, list):
+        raise ValueError("quality warnings JSON root must be an array")
     # 문장 길이(글자수 초과) 경고는 발송을 막지 않는다 — 가독성 참고일 뿐 사실 오류가
     # 아니다. 발송 게이트는 날조·비약·금지어 등 '내용 오류'만 센다. (길이 경고는 로그엔 남음)
     blocking = [w for w in warnings
                 if not (isinstance(w, str) and "자 문장 (>" in w)]
     return len(blocking)
+
+
+def _deliverable_is_current(report, briefing_path, policy: dict, html_path, html_hash: str) -> bool:
+    """발송 직전 신선도 게이트 — briefing 은 디스크에서 다시 읽어 비교한다.
+
+    검증 이후 누군가 briefing 을 고쳤다면 그 원고는 검증된 적이 없다.
+    """
+    try:
+        return deliverable_is_current(
+            report, briefing=_canonical_briefing(load_json(briefing_path)), policy=policy,
+            html_bytes=html_path.read_bytes(), expected_html_hash=html_hash)
+    except Exception as e:  # noqa: BLE001 — 읽을 수 없으면 발송하지 않는다
+        warn(f"발송 전 신선도 확인 실패 — {e}")
+        return False
 
 
 def _write_exec_log(
@@ -188,7 +247,27 @@ def run(args) -> int:
             hold_reasons.append(
                 "출처 ref 미해결 비율 > 30% — 인라인 출처 [n] 매칭 손상 가능")  #
         elif resolve_rc != 0:  #
-            warn(f"resolve-refs 실패 (rc={resolve_rc}) — 기존 briefing 그대로 진행")  #
+            warn(f"resolve-refs 실패 (rc={resolve_rc}) — 발송 보류 대상")  #
+            hold_reasons.append(f"출처 ref 해석 실패 (rc={resolve_rc})")
+
+        # ── Step 8-pre: canonical 검증 (schema/ref/category/coverage) ──
+        # 게이트 규칙은 prmonitor.validation 이 단독 소유 — 여기선 입력만 맞춘다.
+        policy = {"qw_threshold": QW_THRESHOLD}
+        canonical, report = {}, None
+        try:
+            facts = load_json(paths.PROCESSED_DIR / f"newsletter-facts-{date_str}.json")
+            article_ids, category_ids = _validation_inputs(facts)
+            canonical = _canonical_briefing(load_json(briefing))
+            report = validate_briefing(canonical, article_ids=article_ids,
+                                       category_ids=category_ids, policy=policy)
+        except Exception as e:  # noqa: BLE001 — 검증 불가는 통과가 아니라 보류다
+            warn(f"briefing 검증 실행 실패 — {e}")
+            hold_reasons.append(f"briefing 검증 실행 실패 — {e}")
+        if report is not None and report.status != "PASS":
+            for f in report.findings:
+                warn(f"검증 실패 [{f.code}] {f.path} — {f.message}")
+            hold_reasons.append(
+                f"briefing 검증 HELD — {', '.join(sorted({f.code for f in report.findings}))}")
 
         # ── Step 8: 국내/해외 기사 수 자동 계산 ──
         log("Step 8: 국내/해외 기사 수 자동 계산...")  #
@@ -231,24 +310,39 @@ def run(args) -> int:
         ok(f"Step 8: HTML 생성 완료 ({html_size} bytes)")  #
 
         # ── Step 8-post: 품질 경고 게이트 ──
-        qw_count = _quality_warning_count(date_str)  #
         qw_file = paths.NEWSLETTER_OUTPUT_DIR / f".quality-warnings-{date_str}.json"
+        try:
+            qw_count = _quality_warning_count(date_str)
+        except Exception as e:
+            warn(f"품질 경고 검증 실패 — {e}")
+            hold_reasons.append(f"품질 경고 검증 파일 오류 — {qw_file}")
+            qw_count = 0
         if qw_count > QW_THRESHOLD:  #
             warn(f"품질 경고 {qw_count}건 > {QW_THRESHOLD}건 — 발송 보류 대상")  #
             hold_reasons.append(
                 f"품질 경고 {qw_count}건 (임계 {QW_THRESHOLD}건 초과) — {qw_file} 확인")  #
 
+        # 보류 확정 → 산출물에 HELD 워터마크 (canonical 렌더러와 동일 표식).
+        if hold_reasons:
+            html_out.write_text(HELD_WATERMARK + html_out.read_text(encoding="utf-8"),
+                                encoding="utf-8")
+        # 발송 직전 재확인용 렌더 해시 — 이 시점 이후 바뀐 HTML 은 발송하지 않는다.
+        html_hash = hashlib.sha256(html_out.read_bytes()).hexdigest()
+
         # ── Step 9: competitor-landscape 자동 갱신 ──
-        log("Step 9: competitor-landscape.yaml 갱신 확인...")  #
-        try:
-            subprocess.run(
-                [str(paths.venv_python()),
-                 str(paths.SCRIPTS_DIR / "pipeline" / "update-landscape.py"),
-                 date_str],
-                check=False,
-            )  #  (실패해도 계속 — `|| true`)
-        except OSError as e:
-            warn(f"update-landscape 실행 실패 (후처리는 계속) — {e}")  #
+        if hold_reasons:
+            log("Step 9: 검증 보류 상태 — competitor-landscape 갱신 skip")
+        else:
+            log("Step 9: competitor-landscape.yaml 갱신 확인...")
+            try:
+                subprocess.run(
+                    [str(paths.venv_python()),
+                     str(paths.SCRIPTS_DIR / "pipeline" / "update-landscape.py"),
+                     date_str],
+                    check=False,
+                )
+            except OSError as e:
+                warn(f"update-landscape 실행 실패 (후처리는 계속) — {e}")
 
         # ── Step 10: 이메일 발송 ──
         source_count = foreign + domestic  #
@@ -292,6 +386,10 @@ def run(args) -> int:
             ]
             review_file.write_text("\n".join(lines) + "\n", encoding="utf-8")  #
             warn(f"Step 10: 품질 게이트 발동 — 발송 보류. {review_file} 확인.")  #
+        elif report is None or not _deliverable_is_current(
+                report, briefing, policy, html_out, html_hash):
+            # 검증 이후 briefing/policy/HTML 이 바뀌었다 — 검증되지 않은 원고다.
+            warn("Step 10: 검증 이후 산출물이 변경됨 — 발송 skip")
         else:  #
             send_html_email(email_group, subject, html_out)  #
 

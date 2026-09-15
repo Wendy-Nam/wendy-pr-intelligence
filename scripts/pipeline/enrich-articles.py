@@ -69,10 +69,10 @@ ko_summary = 그 기사가 "무슨 일인지" {summ_lang} 한 문장(40~80자). 
 
 
 def _aid(a: dict) -> str:
-    """aggregate.article_id 와 동일 규칙 — url(없으면 title) md5 6자."""
-    import hashlib
-    key = a.get("url") or a.get("title", "")
-    return "a" + hashlib.md5(key.encode("utf-8")).hexdigest()[:6]
+    """aggregate와 동일한 canonical URL 기반 article ID."""
+    from prmonitor.pipelines.articles import article_id
+    return article_id(a.get("canonical_url") or a.get("url"), title=a.get("title", ""),
+                      source=a.get("source_name", ""), published_at=a.get("published_date", ""))
 
 
 def _build_input(articles: list[dict]) -> list[dict]:

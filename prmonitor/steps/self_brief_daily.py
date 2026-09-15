@@ -39,13 +39,14 @@ def run(args) -> int:
     log(f"=== PR 모니터링 일괄 실행 ({date}, {hours}h) ===")  # L20
 
     # L22: run-pre.sh "$DATE" --hours "$HOURS" — date + 해석된 hours 공유.
-    rc = pre.run(Namespace(date=date, hours=hours))
+    no_email = bool(getattr(args, "no_email", False))
+    rc = pre.run(Namespace(date=date, hours=hours, no_email=no_email))
     if rc != 0:  # set -euo pipefail → 첫 실패에서 중단
         return rc
 
     # 같은 hours 를 self_brief 에도 넘긴다(override 일관성). 인자 없으면 self_brief 이
     # 동일 정책으로 재해석하므로 결과는 같다.
-    return self_brief.run(Namespace(date=date, hours=hours))
+    return self_brief.run(Namespace(date=date, hours=hours, no_email=no_email))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "run_id": "20260915T010000Z-0123456789ab",
+  "revision": 1,
+  "briefing_hash": "d013ed57e128d6a07d54676dc448130b8acbd511d11d780e28289fadbe0c56f1",
+  "policy_hash": "95e77aebcc9c1655c57fc3209dc5434eba0ba376b2dac5e48ea808bb8139f537",
+  "status": "PASS",
+  "findings": [],
+  "required_jobs": {
+    "expected": 1,
+    "succeeded": 1
+  },
+  "coverage": {
+    "expected": 2,
+    "covered": 2
+  },
+  "checked_at": "2026-09-15T01:02:00Z"
+}

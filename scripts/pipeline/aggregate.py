@@ -10,7 +10,6 @@ insight-synthesizer 가 이 파일을 입력으로 사용.
 """
 from __future__ import annotations  # ponytail: PEP 604 unions on py3.9 venv
 
-import hashlib
 import sys
 from datetime import date, datetime
 from difflib import SequenceMatcher
@@ -22,6 +21,7 @@ from lib.common import CONFIG_DIR, PROCESSED_DIR, load_json, load_yaml, save_jso
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from prmonitor import domainpack
+from prmonitor.pipelines.articles import article_id as canonical_article_id
 
 
 def load_company_profile() -> dict:
@@ -220,8 +220,11 @@ def article_id(article: dict) -> str:
     synthesizer가 이 id를 ref로 출력하면 resolve-refs.py가 url/매체/날짜를
     결정론적으로 조인한다 (LLM이 URL을 복사하다 누락/중복 내는 문제 차단).
     """
-    key = article.get("url") or article.get("title", "")
-    return "a" + hashlib.md5(key.encode("utf-8")).hexdigest()[:6]
+    return canonical_article_id(
+        article.get("canonical_url") or article.get("url"),
+        title=article.get("title", ""), source=article.get("source_name", ""),
+        published_at=article.get("published_date", article.get("date", "")),
+    )
 
 
 def extract_fact(article: dict) -> dict:

@@ -11,6 +11,9 @@ fails loudly instead of silently using stale baked-in data.
 """
 from __future__ import annotations
 
+import hashlib
+import json
+from dataclasses import dataclass
 from pathlib import Path
 
 from . import paths
@@ -19,6 +22,45 @@ from . import PrMonitorError
 
 class DomainPackError(PrMonitorError):
     pass
+
+
+@dataclass(frozen=True)
+class DomainPackSnapshot:
+    """Resolved domain-pack values with provenance for reproducible runs."""
+    values: dict
+    origins: tuple[Path, ...]
+    hash: str
+    example_mode: bool
+
+
+_OPERATIONAL_PACKS = ("runtime", "company-profile", "categories", "sources")
+
+
+def load_domainpack(ctx, example_mode: bool = False) -> DomainPackSnapshot:
+    """Load a complete v1 snapshot using an injected PathContext.
+
+    Bundled templates are only an explicit example-mode fallback; operational
+    workspaces must provide their own domain files.
+    """
+    import yaml
+    values, origins = {}, []
+    names = set(_OPERATIONAL_PACKS)
+    names.update(p.stem for p in (ctx.workspace / "config").glob("*.yaml"))
+    for name in sorted(names):
+        user = ctx.workspace / "config" / f"{name}.yaml"
+        bundled = ctx.bundle / "config-templates" / f"{name}.yaml"
+        source = user if user.is_file() else bundled if example_mode and bundled.is_file() else None
+        if source is None:
+            if name in _OPERATIONAL_PACKS:
+                raise DomainPackError(f"필수 도메인팩 누락: {user}")
+            continue
+        with source.open(encoding="utf-8") as f:
+            values[name] = yaml.safe_load(f) or {}
+        origins.append(source.resolve())
+    payload = {"values": values, "origins": [str(x) for x in origins], "example_mode": example_mode}
+    digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True,
+                                       separators=(",", ":"), allow_nan=False).encode()).hexdigest()
+    return DomainPackSnapshot(values, tuple(origins), digest, example_mode)
 
 
 def pack_path(name: str) -> Path | None:

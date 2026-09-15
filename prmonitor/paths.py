@@ -21,7 +21,11 @@ transitional ``common.sh`` can adopt these paths without duplicating the logic.
 from __future__ import annotations
 
 import os
+import hashlib
 from pathlib import Path
+from typing import Mapping
+
+from .models import PathContext
 
 
 def _env_path(*names: str) -> Path | None:
@@ -31,6 +35,43 @@ def _env_path(*names: str) -> Path | None:
         if val:
             return Path(val).expanduser().resolve()
     return None
+
+
+def _default_cache(workspace: Path, env: Mapping[str, str]) -> Path:
+    if os.name == "nt":
+        root = Path(env.get("LOCALAPPDATA", str(Path.home() / "AppData" / "Local"))) / "prmonitor" / "Cache"
+    elif sys_platform() == "darwin":
+        root = Path.home() / "Library" / "Caches" / "prmonitor"
+    else:
+        root = Path(env.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "prmonitor"
+    wid = hashlib.sha256(str(workspace.resolve()).encode()).hexdigest()[:16]
+    return root / "workspaces" / wid
+
+
+def sys_platform() -> str:
+    import sys
+    return sys.platform
+
+
+def resolve_paths(cli_options=None, env: Mapping[str, str] | None = None,
+                  cwd: Path | str | None = None, bundle: Path | str | None = None) -> PathContext:
+    """Resolve v1 roots without mutating module globals or creating directories."""
+    env = os.environ if env is None else env
+    def option(name: str):
+        return getattr(cli_options, name, None) if cli_options is not None else None
+    here = Path(cwd or Path.cwd()).expanduser().resolve()
+    b = Path(option("bundle") or bundle or env.get("PRM_PLUGIN_ROOT")
+             or env.get("CLAUDE_PLUGIN_ROOT") or _BUNDLE_ROOT).expanduser().resolve()
+    w = Path(option("workspace") or env.get("PRM_PROJECT_DIR")
+             or env.get("CLAUDE_PROJECT_DIR") or here).expanduser().resolve()
+    cache_root = option("cache_dir") or env.get("PRM_PLUGIN_DATA") or env.get("CLAUDE_PLUGIN_DATA")
+    if cache_root:
+        root = Path(cache_root).expanduser().resolve()
+        wid = hashlib.sha256(str(w).encode()).hexdigest()[:16]
+        c = root if root.name == wid and root.parent.name == "workspaces" else root / "workspaces" / wid
+    else:
+        c = _default_cache(w, env)
+    return PathContext(bundle=b, workspace=w, cache=c)
 
 
 # prmonitor/paths.py -> parent.parent == repo root (dev) or plugin bundle root (installed).

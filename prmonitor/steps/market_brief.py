@@ -270,6 +270,22 @@ def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
         cat_outs.append((cid, out, name))
         jobs.append((f"cat-{cid}", out, _cat_prompt(date, cid, sl_path, out)))
 
+    def _valid_output(label, out):
+        """A created file is not evidence that an LLM job succeeded."""
+        try:
+            data = json.loads(out.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as e:
+            raise RuntimeError(f"{label} JSON을 읽을 수 없음: {e}") from e
+        if not isinstance(data, dict):
+            raise RuntimeError(f"{label} JSON root가 object가 아님")
+        required = (("tldr", str), ("insights", list), ("landscape_update_points", list)) \
+            if label == "core" else (("category_id", str), ("category_name", str),
+                                       ("summary", str), ("headlines", list))
+        invalid = [key for key, typ in required if not isinstance(data.get(key), typ)]
+        if invalid:
+            raise RuntimeError(f"{label} JSON 필수 필드/형식 오류: {', '.join(invalid)}")
+        return data
+
     def _run_one(job):
         label, out, prompt = job
         logp = paths.LOGS_DIR / f"synth-{label}-{date}.log"
@@ -289,7 +305,11 @@ def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
             except (OSError, RuntimeError) as e:
                 warn(f"합성 호출 실패 [{label}] — {e}")
             if out.exists():
-                return label, True
+                try:
+                    _valid_output(label, out)
+                    return label, True
+                except RuntimeError as e:
+                    warn(f"합성 산출물 무효 [{label}] — {e}")
             if attempt < 2:
                 time.sleep(3 * (attempt + 1))  # 529 는 일시적 — 짧게 재시도
         warn(f"합성 재시도 후에도 실패 [{label}] — 해당 항목 누락 가능")
@@ -298,36 +318,34 @@ def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
     # 동시 6 (속도 우선). 529 Overloaded 는 _run_one 의 빠른 재시도가 흡수 — 동시성을
     # 낮춰 웨이브를 늘리는 것보다, 높게 유지하고 일시 실패만 재시도하는 게 빠르고 안정적.
     with ThreadPoolExecutor(max_workers=6) as ex:
-        list(ex.map(_run_one, jobs))
+        results = dict(ex.map(_run_one, jobs))
 
     # 병렬 배치에서 실패한 호출은 순차 재시도 — 동시 부하가 사라진 상태라 529 Overloaded 가
     # 거의 사라진다. (병렬 중엔 다른 호출이 계속 API 를 때려 재시도도 529 나던 문제 차단.)
     for job in jobs:
         if not job[1].exists():
             log(f"  순차 재시도 [{job[0]}] (병렬 실패분 — 부하 없이)")
-            _run_one(job)
+            results[job[0]] = _run_one(job)[1]
+
+    failed = [label for label, ok_ in results.items() if not ok_]
+    if failed:
+        raise RuntimeError("필수 합성 job 실패: " + ", ".join(failed))
+
+    # Check again immediately before merge: an invalid job must never become a
+    # partial final briefing merely because its file exists.
+    core = _valid_output("core", core_out)
+    category_docs = {cid: _valid_output(f"cat-{cid}", out)
+                     for cid, out, _ in cat_outs}
 
     # 머지
     briefing = {"date": date, "tldr": "", "insights": [], "company_glossary": [],
                 "landscape_update_points": [], "category_summary": [], "headlines": []}
-    if core_out.exists():
-        try:
-            core = json.loads(core_out.read_text(encoding="utf-8"))
-            briefing["tldr"] = core.get("tldr", "")
-            briefing["insights"] = core.get("insights", [])
-            briefing["company_glossary"] = core.get("company_glossary", []) or core.get("glossary", [])
-            briefing["landscape_update_points"] = core.get("landscape_update_points", [])
-        except (json.JSONDecodeError, OSError) as e:
-            warn(f"core 머지 실패 — {e}")
+    briefing["tldr"] = core["tldr"]
+    briefing["insights"] = core["insights"]
+    briefing["company_glossary"] = core.get("company_glossary", []) or core.get("glossary", [])
+    briefing["landscape_update_points"] = core["landscape_update_points"]
     for cid, out, cname in cat_outs:
-        if not out.exists():
-            warn(f"카테고리 동향 누락 [{cid}]")
-            continue
-        try:
-            d = json.loads(out.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError) as e:
-            warn(f"카테고리 머지 실패 [{cid}] — {e}")
-            continue
+        d = category_docs[cid]
         briefing["category_summary"].append({
             "category_id": cid,
             "category_name": d.get("category_name", cname),
@@ -350,7 +368,10 @@ def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
         gloss_out.unlink()
     except FileNotFoundError:
         pass
-    glossary_model = _safe_model(os.environ.get("PRM_GLOSSARY_MODEL"), _SYNTH_MODEL_DEFAULT)
+    # A Claude-specific model name must not leak to Codex/Hermes. Their empty
+    # model value deliberately means "use that CLI's configured default".
+    glossary_default = _SYNTH_MODEL_DEFAULT if llm_adapter.backend_name() == "claude" else ""
+    glossary_model = _safe_model(os.environ.get("PRM_GLOSSARY_MODEL"), glossary_default)
     glossary_prompt = _glossary_prompt(date, briefing_path, ctx_path, gloss_out)
     for attempt in range(2):  # 529 등 일시 실패 1회 재시도
         try:
@@ -419,6 +440,12 @@ def run(args) -> int:
     dry_run = bool(getattr(args, "dry_run", False))
     no_email = bool(getattr(args, "no_email", False))
 
+    # Public dry-run is plan-only: it must not create paths, invoke collection,
+    # LLM, memory, delivery, or execution-log writes.
+    if dry_run:
+        log("DRY RUN — plan only; no pipeline stage executed")
+        return 0
+
     # Writable dir skeleton (mkdir -p data/raw data/processed …)
     paths.ensure_dirs()
 
@@ -433,8 +460,17 @@ def run(args) -> int:
     # log records the real outcome even on an early failure (.sh `trap ... EXIT`).
     status = 0
 
+    # Canonical run/job ledger — planning and result ingestion go through the
+    # engine facade so this wrapper is a caller, not a parallel implementation.
+    from ..services.engine import close_legacy_run, open_legacy_run
+    ledger = open_legacy_run("market", date=date, hours=hours,
+                             delivery_requested=not no_email)
+
     def _finish(code: int) -> int:
         # Equivalent of `trap 'write_exec_log $?' EXIT`: always log.
+        close_legacy_run(ledger, succeeded=code == 0,
+                         result={'date': date, 'hours': hours, 'status': code}
+                         if code == 0 else {'code': 'MARKET_BRIEF_FAILED', 'status': code})
         _exec_log(date=date, run_id=run_id, started=started_at,
                   status=code, hours=hours, claude_log=output_log)
         return code
@@ -451,11 +487,6 @@ def run(args) -> int:
     if pre_rc != 0:
         err("전처리(pre) 실패")
         return _finish(1)
-
-    if dry_run:
-        log("DRY RUN — Claude 호출 skip (전처리 완료)")          #
-        print(f"  data/processed/newsletter-facts-{date}.json")
-        return _finish(0)
 
     # ── Step 7: 인사이트 합성 (LLM) ─────────────────────────────── ─
     # Guard missing LLM backend with a clear error. Backend selectable via
@@ -534,6 +565,17 @@ def run(args) -> int:
             briefing_json,
             f"briefing JSON 미생성 ({briefing_json}) — 합성(Step7) 실패. 로그: {output_log}")
     except SystemExit:
+        return _finish(1)
+    try:
+        brief = json.loads(briefing_json.read_text(encoding="utf-8"))
+        required = (("tldr", str), ("insights", list), ("category_summary", list),
+                    ("headlines", list))
+        if (not isinstance(brief, dict)
+                or any(not isinstance(brief.get(k), typ) for k, typ in required)
+                or not brief["tldr"].strip()):
+            raise ValueError("필수 briefing 내용 또는 형식 누락")
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        err(f"briefing JSON 검증 실패 — {e}")
         return _finish(1)
 
     # ── Step 8~10: 후처리 (HTML 렌더 → PR 누적 → 이메일) ───────── ─

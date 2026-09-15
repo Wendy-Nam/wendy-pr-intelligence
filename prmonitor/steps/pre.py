@@ -138,6 +138,8 @@ def run(args) -> int:
                 paths.PROCESSED_DIR / f"extracted-{date}.json",
                 paths.PROCESSED_DIR / f"classified-{date}.json",
                 paths.PROCESSED_DIR / f"newsletter-facts-{date}.json",
+                paths.PROCESSED_DIR / f"synthesis-context-{date}.json",
+                paths.PROCESSED_DIR / f"enriched-{date}.json",
             ):
                 stale.unlink(missing_ok=True)
 

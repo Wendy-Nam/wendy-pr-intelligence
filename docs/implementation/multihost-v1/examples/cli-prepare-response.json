@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "command": "run",
+  "run_id": "20260915T010000Z-0123456789ab",
+  "state": "AWAITING_LLM",
+  "exit_code": 0,
+  "artifacts": {
+    "request": ".prmonitor/runs/20260915T010000Z-0123456789ab/jobs/market_brief/request.json"
+  },
+  "next_actions": [
+    {
+      "command": "ingest",
+      "argv": [
+        "ingest",
+        "--run-id",
+        "20260915T010000Z-0123456789ab",
+        "--job-id",
+        "market_brief",
+        "--file",
+        "result.json",
+        "--json"
+      ],
+      "reason": "현재 호스트가 request schema에 맞춘 결과 파일을 작성한 후 제출"
+    }
+  ],
+  "error": null,
+  "diagnostics": []
+}
