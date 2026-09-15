@@ -154,6 +154,7 @@ override 가능합니다. Claude Code 없이 실행할 땐 `SessionStart` 훅과
 | 출력 언어·문장 길이·금지어 | `config/style.yaml` |
 | 수신자·이메일 인증 | `config/delivery.yaml` |
 | 인사이트 품질용 예시 | `config/prompt-examples.yaml` |
+| HTML 디자인(색상·폰트·여백 등 서식) | `config/newsletter-theme.css` (신규 생성 — 없으면 번들 기본 테마 `skills/briefing-formatter/theme.css` 사용) |
 
 **자사 맥락**(`data/self-context/`)이 인사이트 "자사 함의" 품질을 좌우합니다 — `company-narrative.md`·`competitor-landscape.yaml`·`key-events.yaml`. PR 실행마다 분기 타임라인이 자동 누적되고, 월 1회 `self-context-updater` 에이전트로 정리·승격하는 걸 권장합니다(편집 판단이 필요해 자동 스케줄에 넣지 않음).
 
