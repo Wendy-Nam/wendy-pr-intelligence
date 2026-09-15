@@ -1,4 +1,5 @@
-"""Newsletter orchestrator — Python port of scripts/newsletter/run-newsletter.sh.
+"""Market brief (industry newsletter) orchestrator (CLI: market-brief) —
+Python port of scripts/newsletter/run-newsletter.sh.
 
 Three-stage pipeline, faithful to the bash ground truth
 (ref-pr-monitor/scripts/newsletter/run-newsletter.sh):

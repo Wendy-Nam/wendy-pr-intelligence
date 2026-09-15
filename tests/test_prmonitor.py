@@ -112,29 +112,37 @@ class TestCommon:
 
 
 class TestCliArgs:
-    """CLI 인자 — pr-clip-daily/pr-clip 가 선택적 [hours] override 를 받는다.
+    """CLI 인자 — self-brief-daily/self-brief 가 선택적 [hours] override 를 받는다.
 
-    pr/pr-monitor 는 구버전 이름의 alias(add_parser aliases=) 로 남아있다 —
-    기존 크론/Routines 를 깨지 않기 위한 마이그레이션 유예. 새 이름과 동일하게
-    파싱되는지도 함께 검증한다.
+    pr-clip*/pr-monitor/pr/newsletter 는 구버전 이름의 alias(add_parser aliases=) 로
+    남아있다 — 기존 크론/Routines 를 깨지 않기 위한 마이그레이션 유예. 새 이름과
+    동일하게 파싱되는지도 함께 검증한다.
     """
 
-    def test_pr_clip_daily_accepts_optional_hours(self):
+    def test_self_brief_daily_accepts_optional_hours(self):
         from prmonitor.__main__ import build_parser
         p = build_parser()
-        a = p.parse_args(["pr-clip-daily", "2026-06-15", "72"])
+        a = p.parse_args(["self-brief-daily", "2026-06-15", "72"])
         assert a.date == "2026-06-15" and a.hours == 72
         # 생략 시 None → run() 이 정책값(월요일 72h 등)으로 폴백
-        assert p.parse_args(["pr-clip-daily", "2026-06-15"]).hours is None
-        assert p.parse_args(["pr-clip-daily"]).hours is None
+        assert p.parse_args(["self-brief-daily", "2026-06-15"]).hours is None
+        assert p.parse_args(["self-brief-daily"]).hours is None
 
-    def test_pr_clip_accepts_optional_hours(self):
+    def test_self_brief_accepts_optional_hours(self):
         from prmonitor.__main__ import build_parser
-        assert build_parser().parse_args(["pr-clip", "2026-06-15", "48"]).hours == 48
+        assert build_parser().parse_args(["self-brief", "2026-06-15", "48"]).hours == 48
+
+    def test_market_brief_parses(self):
+        from prmonitor.__main__ import build_parser
+        a = build_parser().parse_args(["market-brief", "--hours", "48"])
+        assert a.cmd == "market-brief" and a.hours == 48
 
     def test_legacy_aliases_still_parse(self):
-        """구 이름(pr, pr-monitor)도 여전히 유효한 서브커맨드로 파싱된다."""
+        """구 이름(pr, pr-monitor, pr-clip*, newsletter)도 여전히 유효한 서브커맨드로 파싱된다."""
         from prmonitor.__main__ import build_parser
         p = build_parser()
         assert p.parse_args(["pr", "2026-06-15", "72"]).hours == 72
         assert p.parse_args(["pr-monitor", "2026-06-15", "48"]).hours == 48
+        assert p.parse_args(["pr-clip", "2026-06-15", "48"]).hours == 48
+        assert p.parse_args(["pr-clip-daily", "2026-06-15"]).date == "2026-06-15"
+        assert p.parse_args(["newsletter", "--hours", "24"]).hours == 24

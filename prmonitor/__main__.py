@@ -8,10 +8,12 @@ all pipeline logic lives in the step modules (faithful ports of the .sh files).
 Subcommand map:
   pre <date> [--hours N]    ← run-pre.sh         (fetch→extract→classify→aggregate→preload)
   post <date> <hours>       ← run-post.sh        (resolve-refs→format→landscape→gate→email)
-  pr-clip <date>            ← run-pr-monitor.sh  (render→accumulate→email)
-  pr-clip-daily [date]      ← run-pr-daily.sh    (pre + pr-clip)
-  newsletter [--hours N]    ← run-newsletter.sh  (pre → claude -p synth → post)
+  self-brief <date>         ← run-pr-monitor.sh  (render→accumulate→email; 자사 PR 모니터링)
+  self-brief-daily [date]   ← run-pr-daily.sh    (pre + self-brief)
+  market-brief [--hours N]  ← run-newsletter.sh  (pre → claude -p synth → post; 산업 뉴스레터)
   init                      ← SessionStart scaffolding (no venv required first)
+
+pr-clip/pr-clip-daily/pr-monitor/pr/newsletter 는 예전 이름 — alias 로 당분간 유지.
 """
 from __future__ import annotations
 
@@ -81,18 +83,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_post.add_argument("date", nargs="?", default=None)
     p_post.add_argument("hours", type=int, nargs="?", default=None)
 
-    # aliases=[...]: 예전 이름(pr-monitor/pr)도 당분간 그대로 받는다 — 이미 등록된
-    # 크론/Routines 를 깨지 않기 위한 마이그레이션 유예. 새로 쓸 땐 정식 이름 사용.
-    p_prmon = sub.add_parser("pr-clip", aliases=["pr-monitor"],
-                             help="PR 모니터링 (톤판정→누적→발송)")
+    # aliases=[...]: 예전 이름들도 당분간 그대로 받는다 — 이미 등록된 크론/Routines 를
+    # 깨지 않기 위한 마이그레이션 유예. 새로 쓸 땐 정식 이름(self-brief*/market-brief) 사용.
+    p_prmon = sub.add_parser("self-brief", aliases=["pr-clip", "pr-monitor"],
+                             help="자사 PR 모니터링 (톤판정→누적→발송)")
     p_prmon.add_argument("date", nargs="?", default=None)
     p_prmon.add_argument("hours", type=int, nargs="?", default=None)
 
-    p_pr = sub.add_parser("pr-clip-daily", aliases=["pr"], help="PR 일일 (pre + pr-clip)")
+    p_pr = sub.add_parser("self-brief-daily", aliases=["pr-clip-daily", "pr"],
+                          help="자사 PR 일일 (pre + self-brief)")
     p_pr.add_argument("date", nargs="?", default=None)
     p_pr.add_argument("hours", type=int, nargs="?", default=None)
 
-    p_nl = sub.add_parser("newsletter", help="뉴스레터 (pre → 합성 → post)")
+    p_nl = sub.add_parser("market-brief", aliases=["newsletter"],
+                          help="산업 뉴스레터 (pre → 합성 → post)")
     p_nl.add_argument("date", nargs="?", default=None)
     p_nl.add_argument("--hours", type=int, default=None)
 
@@ -107,7 +111,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
 
-    _date_cmds = {"pre", "post", "pr-clip", "pr-monitor", "pr-clip-daily", "pr", "newsletter"}
+    _date_cmds = {"pre", "post", "self-brief", "pr-clip", "pr-monitor",
+                 "self-brief-daily", "pr-clip-daily", "pr", "market-brief", "newsletter"}
     if getattr(args, "date", None) is None and args.cmd in _date_cmds:
         args.date = _today()
 
@@ -134,16 +139,21 @@ def main(argv: list[str] | None = None) -> int:
     if argv is None:
         _reexec_under_venv(paths.venv_python())
 
-    from .steps import pre, post, pr_clip, pr_clip_daily, newsletter
+    from .steps import pre, post, self_brief, self_brief_daily, market_brief
     dispatch = {
         "pre": pre.run, "post": post.run,
-        "pr-clip": pr_clip.run, "pr-monitor": pr_clip.run,          # pr-monitor: alias
-        "pr-clip-daily": pr_clip_daily.run, "pr": pr_clip_daily.run,  # pr: alias
-        "newsletter": newsletter.run,
+        "self-brief": self_brief.run, "pr-clip": self_brief.run, "pr-monitor": self_brief.run,
+        "self-brief-daily": self_brief_daily.run, "pr-clip-daily": self_brief_daily.run,
+        "pr": self_brief_daily.run,
+        "market-brief": market_brief.run, "newsletter": market_brief.run,
     }
-    if args.cmd in ("pr-monitor", "pr"):
-        print(f"[prmonitor] '{args.cmd}' 는 예전 이름입니다 — "
-              f"{'pr-clip' if args.cmd == 'pr-monitor' else 'pr-clip-daily'} 로 갱신하세요.",
+    _canonical = {
+        "pr-clip": "self-brief", "pr-monitor": "self-brief",
+        "pr-clip-daily": "self-brief-daily", "pr": "self-brief-daily",
+        "newsletter": "market-brief",
+    }
+    if args.cmd in _canonical:
+        print(f"[prmonitor] '{args.cmd}' 는 예전 이름입니다 — {_canonical[args.cmd]} 로 갱신하세요.",
               file=sys.stderr)
     return dispatch[args.cmd](args)
 

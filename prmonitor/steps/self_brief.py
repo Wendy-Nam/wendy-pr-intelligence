@@ -1,4 +1,4 @@
-"""PR clipping step (CLI: pr-clip) — Python port of ``scripts/pr/run-pr-monitor.sh``.
+"""PR clipping step (CLI: self-brief) — Python port of ``scripts/pr/run-pr-monitor.sh``.
 
 Faithful, behavior-preserving port of the bash orchestrator. Each block cites the
 ``.sh`` line numbers it ports (numbers refer to the ground-truth copy at
@@ -22,7 +22,7 @@ Three-root differences vs the .sh (per the architecture contract):
     in pure Python.
 
 run(args) reads ``args.date`` (the dispatcher fills it with today when omitted).
-There is no ``--no-email`` flag on the ``pr-clip`` subparser (see
+There is no ``--no-email`` flag on the ``self-brief`` subparser (see
 prmonitor.__main__), so the .sh's ``$3 == --no-email`` skip path is unreachable
 here and is intentionally not wired in; email always goes through
 common.send_html_email, which itself no-ops gracefully when delivery.yaml/auth is
