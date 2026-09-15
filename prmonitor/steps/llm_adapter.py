@@ -1,111 +1,221 @@
-"""LLM backend adapter — isolates the synthesis call sites from any one CLI.
+"""LLM backend adapter — isolates synthesis calls from any one host CLI.
 
-newsletter.py used to shell out to `claude -p ...` directly (3 call sites).
-That's fine when Claude Code is the host, but breaks under any other agent
-CLI (Codex, OpenCode/oh-my-openagent, etc.) that doesn't have a `claude`
-binary or doesn't understand its flags.
+newsletter.py used to shell out to `claude -p ...` directly, three times,
+with near-duplicate argv-building at each call site. That breaks under any
+host that isn't Claude Code, and the duplication made every future backend
+mean copy-pasting subprocess plumbing again.
 
-Backend is selected by env var `PRM_LLM` (default: "claude"):
+This module fixes both: a `SynthJob` bundles what a synthesis call needs,
+and each supported host is one small `LLMBackend` subclass that knows how
+to turn a job into an argv. Adding a backend means adding one class, not
+touching newsletter.py.
 
-  claude    claude -p "<prompt>" --model X --effort Y --allowedTools ... \
-              --output-format stream-json --verbose   (unchanged behavior)
-  generic   $PRM_SYNTH_CMD "<prompt>"   — user supplies the exact command;
-              "{prompt_file}" in PRM_SYNTH_CMD is replaced with a path to a
-              temp file holding the prompt (for CLIs that don't take a
-              prompt as a bare argv, e.g. `codex exec`, `opencode run`).
-              If "{prompt_file}" isn't present, the prompt is appended as
-              the final argv token instead.
+Select the backend with `PRM_LLM` (default: "claude"):
 
-Cost/log parsing stays Claude-specific (stream-json) and is simply skipped
-for the generic backend — callers already treat cost as optional.
+  claude   `claude -p "<prompt>" --model X --effort Y --allowedTools ... \\
+             --add-dir DIR --output-format stream-json --verbose`
+  codex    `codex exec [--model X] "<prompt>"` (OpenAI Codex CLI's
+             non-interactive mode). Override the command shape with
+             PRM_CODEX_CMD if your Codex CLI version's flags differ —
+             same {prompt}/{prompt_file}/{model} substitution as "hermes".
+  hermes   Any other agent CLI (a Hermes agent, oh-my-openagent role,
+             OpenCode, …), via PRM_SYNTH_CMD. Placeholders substituted:
+             {prompt_file} — path to a temp file holding the prompt
+                             (for CLIs that don't take a bare prompt arg)
+             {model}       — the resolved model name, if the command
+                             wants to pass it through explicitly
+             If PRM_SYNTH_CMD has neither {prompt_file} nor {prompt},
+             the prompt is appended as the final argv token.
+  generic  Alias for "hermes" — same PRM_SYNTH_CMD mechanism, kept for
+             backwards compatibility with earlier config.
+
+Cost/log parsing (scripts/lib/exec-log.py) stays Claude-stream-json-shaped
+and is simply unavailable for non-Claude backends; callers already treat
+cost as optional.
 """
 from __future__ import annotations
 
 import os
 import shlex
+import shutil
 import subprocess
-import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 
-def backend() -> str:
+@dataclass(frozen=True)
+class SynthJob:
+    """Everything one synthesis call needs — host-agnostic."""
+
+    prompt: str
+    model: str
+    effort: str = "medium"
+    allowed_tools: str = "Read,Write"
+    add_dir: str = ""
+    log_path: str | Path = ""
+    env: dict | None = None
+
+
+class LLMBackend:
+    """One host CLI. Subclasses implement `_argv` and, optionally, `binary`."""
+
+    name = "base"
+
+    def binary(self) -> str:
+        """The executable this backend needs on PATH. Empty = not applicable."""
+        return ""
+
+    def available(self) -> tuple[bool, str]:
+        b = self.binary()
+        if not b:
+            return (False, f"{self.name}: no command configured")
+        return (shutil.which(b) is not None, b)
+
+    def _argv(self, job: SynthJob) -> list[str]:
+        raise NotImplementedError
+
+    def run(self, job: SynthJob) -> int:
+        """Run the job, writing combined stdout/stderr to job.log_path.
+
+        Returns the subprocess return code (informational — callers judge
+        success by whether the expected output file appeared).
+        """
+        argv = self._argv(job)
+        with open(job.log_path, "w", encoding="utf-8") as lf:
+            proc = subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT,
+                                   env=job.env, check=False)
+        return proc.returncode
+
+
+class ClaudeBackend(LLMBackend):
+    """Claude Code CLI (`claude -p`) — the original, unchanged behavior."""
+
+    name = "claude"
+
+    def binary(self) -> str:
+        return "claude"
+
+    def _argv(self, job: SynthJob) -> list[str]:
+        claude_bin = shutil.which("claude")
+        if not claude_bin:
+            raise RuntimeError("claude CLI not found on PATH")
+        argv = [
+            claude_bin, "-p", job.prompt,
+            "--model", job.model,
+            "--effort", job.effort,
+            "--allowedTools", job.allowed_tools,
+            "--output-format", "stream-json",
+            "--verbose",
+        ]
+        if job.add_dir:
+            argv += ["--add-dir", job.add_dir]
+        return argv
+
+
+class CodexBackend(LLMBackend):
+    """OpenAI Codex CLI, non-interactive mode (`codex exec`).
+
+    Codex's flag surface has shifted across releases, so the shape is
+    overridable with PRM_CODEX_CMD (same placeholders as HermesBackend)
+    for anyone pinned to a different version.
+    """
+
+    name = "codex"
+
+    def binary(self) -> str:
+        cmd = os.environ.get("PRM_CODEX_CMD", "")
+        return _first_token(cmd) if cmd else "codex"
+
+    def _argv(self, job: SynthJob) -> list[str]:
+        cmd = os.environ.get("PRM_CODEX_CMD", "")
+        if cmd:
+            return _build_argv(cmd, job)
+        argv = ["codex", "exec", "--full-auto"]
+        if job.model:
+            argv += ["--model", job.model]
+        argv.append(job.prompt)
+        return argv
+
+
+class HermesBackend(LLMBackend):
+    """Any other agent CLI — a Hermes agent, an oh-my-openagent role,
+    OpenCode's `opencode run`, etc. Fully described by PRM_SYNTH_CMD, since
+    there's no single command shape across "some other agent's CLI".
+    """
+
+    name = "hermes"
+
+    def binary(self) -> str:
+        cmd = os.environ.get("PRM_SYNTH_CMD", "")
+        return _first_token(cmd)
+
+    def _argv(self, job: SynthJob) -> list[str]:
+        cmd = os.environ.get("PRM_SYNTH_CMD", "")
+        if not cmd:
+            raise RuntimeError(
+                "PRM_SYNTH_CMD not set for PRM_LLM=hermes — e.g. "
+                'PRM_SYNTH_CMD=\'my-agent-cli run --prompt-file {prompt_file}\'')
+        return _build_argv(cmd, job)
+
+
+_BACKENDS: dict[str, type[LLMBackend]] = {
+    "claude": ClaudeBackend,
+    "codex": CodexBackend,
+    "hermes": HermesBackend,
+    "generic": HermesBackend,  # alias, kept for back-compat
+}
+
+
+def _first_token(cmd: str) -> str:
+    try:
+        parts = shlex.split(cmd)
+    except ValueError:
+        return ""
+    return parts[0] if parts else ""
+
+
+def _build_argv(cmd: str, job: SynthJob) -> list[str]:
+    """Substitute {prompt}/{prompt_file}/{model} placeholders into a command
+    template, writing a temp file for {prompt_file} when it's used.
+    """
+    subst = {"model": job.model}
+    if "{prompt_file}" in cmd:
+        import tempfile
+        tmp = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8")
+        tmp.write(job.prompt)
+        tmp.close()
+        subst["prompt_file"] = tmp.name
+    if "{prompt}" in cmd:
+        subst["prompt"] = job.prompt
+    rendered = cmd.format(**{k: v for k, v in subst.items() if f"{{{k}}}" in cmd})
+    argv = shlex.split(rendered)
+    if "{prompt_file}" not in cmd and "{prompt}" not in cmd:
+        argv.append(job.prompt)
+    return argv
+
+
+def backend_name() -> str:
     return os.environ.get("PRM_LLM", "claude").strip().lower() or "claude"
+
+
+def get_backend() -> LLMBackend:
+    name = backend_name()
+    cls = _BACKENDS.get(name)
+    if cls is None:
+        raise RuntimeError(
+            f"unknown PRM_LLM backend '{name}' — choose one of "
+            f"{sorted(set(_BACKENDS))}")
+    return cls()
 
 
 def available() -> tuple[bool, str]:
     """(ok, binary_or_hint) — whether the configured backend can actually run."""
-    import shutil
-
-    be = backend()
-    if be == "claude":
-        b = shutil.which("claude")
-        return (b is not None, b or "claude")
-    if be == "generic":
-        cmd = os.environ.get("PRM_SYNTH_CMD", "")
-        if not cmd:
-            return (False, "PRM_SYNTH_CMD not set")
-        first = shlex.split(cmd)[0] if cmd else ""
-        b = shutil.which(first)
-        return (b is not None, first)
-    return (False, f"unknown PRM_LLM backend '{be}'")
+    try:
+        return get_backend().available()
+    except RuntimeError as e:
+        return (False, str(e))
 
 
-def run_synthesis(
-    prompt: str,
-    *,
-    model: str,
-    effort: str,
-    allowed_tools: str,
-    add_dir: str,
-    log_path,
-    env: dict,
-) -> int:
-    """Run one synthesis call, writing combined stdout/stderr to log_path.
-
-    Returns the subprocess return code (informational — callers judge success
-    by whether the expected output file appeared, same as before).
-    """
-    be = backend()
-    if be == "claude":
-        import shutil as _shutil
-
-        claude_bin = _shutil.which("claude")
-        if not claude_bin:
-            raise RuntimeError("claude CLI not found on PATH")
-        argv = [
-            claude_bin, "-p", prompt,
-            "--model", model,
-            "--effort", effort,
-            "--allowedTools", allowed_tools,
-            "--add-dir", add_dir,
-            "--output-format", "stream-json",
-            "--verbose",
-        ]
-        with open(log_path, "w", encoding="utf-8") as lf:
-            proc = subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT,
-                                   env=env, check=False)
-        return proc.returncode
-
-    if be == "generic":
-        cmd = os.environ.get("PRM_SYNTH_CMD", "")
-        if not cmd:
-            raise RuntimeError("PRM_SYNTH_CMD not set for PRM_LLM=generic")
-        tmp = None
-        try:
-            if "{prompt_file}" in cmd:
-                tmp = tempfile.NamedTemporaryFile(
-                    mode="w", suffix=".txt", delete=False, encoding="utf-8")
-                tmp.write(prompt)
-                tmp.close()
-                argv = shlex.split(cmd.replace("{prompt_file}", tmp.name))
-            else:
-                argv = shlex.split(cmd) + [prompt]
-            with open(log_path, "w", encoding="utf-8") as lf:
-                proc = subprocess.run(argv, stdout=lf, stderr=subprocess.STDOUT,
-                                       env=env, check=False)
-            return proc.returncode
-        finally:
-            if tmp:
-                Path(tmp.name).unlink(missing_ok=True)
-
-    raise RuntimeError(f"unknown PRM_LLM backend '{be}'")
+def run_synthesis(job: SynthJob) -> int:
+    return get_backend().run(job)

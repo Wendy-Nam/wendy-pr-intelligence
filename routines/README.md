@@ -67,12 +67,14 @@ scheduled-tasks MCP·데스크톱 Routines는 Claude Code 전용이라 다른 �
 30  9 * * 1,3,5 cd /path/to/pr-monitor && ./.venv/bin/python -m prmonitor newsletter
 ```
 
-Claude Code가 아닌 호스트(예: 헤르메스류 에이전트)를 합성 백엔드로 쓰려면
-`PRM_LLM=generic` + `PRM_SYNTH_CMD`로 지정한다 (`prmonitor/steps/llm_adapter.py`
-참고):
+Claude Code가 아닌 호스트를 합성 백엔드로 쓰려면 `PRM_LLM`으로 지정한다
+(`prmonitor/steps/llm_adapter.py` 참고— Claude Code Sub Agent 스펙에 안 걸리는
+호출은 모두 이 어댑터 하나를 거친다):
 
 ```
-export PRM_LLM=generic
+export PRM_LLM=codex                             # OpenAI Codex CLI (codex exec)
+# 또는
+export PRM_LLM=hermes                             # 헤르메스류/그 외 에이전트 CLI 전부
 export PRM_SYNTH_CMD="my-agent-cli run --prompt-file {prompt_file}"
 ```
 

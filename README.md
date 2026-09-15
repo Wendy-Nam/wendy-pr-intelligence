@@ -91,8 +91,30 @@ flowchart LR
 /plugin install pr-monitor@news-monitor
 ```
 
-첫 세션에서 `SessionStart` 훅이 워크스페이스에 `config/`·`data/` 골격 + Python venv 를 자동 구축합니다. 이메일 인증값은 설치 시 입력(건너뛰면 발송만 비활성). 이메일 채널은 `delivery.yaml` 의 `email.provider` 로 둘 중 하나:
+첫 세션에서 `SessionStart` 훅이 워크스페이스에 `config/`·`data/` 골격 + Python venv 를 자동 구축합니다. 이메일 인증값은 설치 시 입력(건너뛰면 발송만 비활성, 선택 사항). 이메일 채널은 `delivery.yaml` 의 `email.provider` 로 둘 중 하나:
 - **microsoft_graph**(Azure AD) · **smtp**(Gmail·O365·SES·사내메일 등 — Azure 없이 발송)
+
+### Claude Code 가 아닌 호스트에서 쓰기 (Codex · Hermes/OpenCode 등)
+
+엔진(`prmonitor/`)은 순수 Python CLI라 `PRM_LLM` 환경변수로 합성 단계(Step 7)의
+LLM 호출을 다른 CLI로 바꿀 수 있습니다. 매니페스트(`.claude-plugin/`)·훅(`hooks/`)·
+`agents/*.md` 서브에이전트 정의만 Claude Code 전용이고, 나머지(설정 스캐폴딩·
+수집·분류·렌더·발송)는 호스트 무관하게 동작합니다.
+
+| `PRM_LLM` | 대상 | 설정 |
+|---|---|---|
+| `claude` (기본) | Claude Code (`claude -p`) | 별도 설정 불필요 |
+| `codex` | OpenAI Codex CLI (`codex exec --full-auto`) | 필요 시 `PRM_CODEX_CMD` 로 플래그 override |
+| `hermes` (= `generic`) | 그 외 모든 에이전트 CLI (Hermes 에이전트·oh-my-openagent 역할·`opencode run` 등) | `PRM_SYNTH_CMD` 필수 — 예: `PRM_SYNTH_CMD='my-agent-cli run --prompt-file {prompt_file}'` (`{prompt_file}`/`{prompt}`/`{model}` 치환 가능) |
+
+```bash
+export PRM_LLM=codex
+python3 prmonitor_launch.py newsletter          # Claude Code 훅·매니페스트 없이 그대로 동작
+```
+
+모델 이름은 `PRM_SYNTH_MODEL`(합성)·`PRM_GLOSSARY_MODEL`(용어집)로 백엔드 무관하게
+override 가능합니다. Claude Code 없이 실행할 땐 `SessionStart` 훅과 `/setup`·`/newsletter`
+슬래시 명령이 없으니, 위 CLI를 직접 호출하거나 `routines/README.md` 의 크론 예시를 쓰세요.
 
 ## 첫 설정 — `/setup`
 

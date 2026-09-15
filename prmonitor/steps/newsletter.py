@@ -280,11 +280,11 @@ def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
             except FileNotFoundError:
                 pass
             try:
-                llm_adapter.run_synthesis(
-                    prompt, model=synth_model, effort=synth_effort,
+                llm_adapter.run_synthesis(llm_adapter.SynthJob(
+                    prompt=prompt, model=synth_model, effort=synth_effort,
                     allowed_tools="Read,Write,Edit",
                     add_dir=str(paths.PROJECT_DIR),  # 워크스페이스 출력 Write 허용
-                    log_path=logp, env=synth_env)
+                    log_path=logp, env=synth_env))
             except (OSError, RuntimeError) as e:
                 warn(f"합성 호출 실패 [{label}] — {e}")
             if out.exists():
@@ -353,10 +353,10 @@ def _run_parallel_synth(date, synth_model, synth_effort, synth_env):
     glossary_prompt = _glossary_prompt(date, briefing_path, ctx_path, gloss_out)
     for attempt in range(2):  # 529 등 일시 실패 1회 재시도
         try:
-            llm_adapter.run_synthesis(
-                glossary_prompt, model=glossary_model, effort="low",
+            llm_adapter.run_synthesis(llm_adapter.SynthJob(
+                prompt=glossary_prompt, model=glossary_model, effort="low",
                 allowed_tools="Read,Write", add_dir=str(paths.PROJECT_DIR),
-                log_path=paths.LOGS_DIR / f"synth-glossary-{date}.log", env=synth_env)
+                log_path=paths.LOGS_DIR / f"synth-glossary-{date}.log", env=synth_env))
             if gloss_out.exists():
                 gl = json.loads(gloss_out.read_text(encoding="utf-8"))
                 if isinstance(gl, list) and gl:
@@ -461,27 +461,31 @@ def run(args) -> int:
     # PRM_LLM (default "claude"); see prmonitor/steps/llm_adapter.py.
     llm_ok, llm_hint = llm_adapter.available()
     if not llm_ok:
-        if llm_adapter.backend() == "claude":
+        if llm_adapter.backend_name() == "claude":
             err("claude CLI 없음. https://docs.claude.com 참고해 Claude Code 설치. "
-                "(다른 LLM 백엔드는 PRM_LLM=generic + PRM_SYNTH_CMD 로 설정 가능)")
+                "(Codex는 PRM_LLM=codex, 다른 에이전트는 PRM_LLM=hermes + PRM_SYNTH_CMD 로 설정 가능)")
         else:
-            err(f"LLM 백엔드({llm_adapter.backend()}) 사용 불가 — {llm_hint}")
+            err(f"LLM 백엔드({llm_adapter.backend_name()}) 사용 불가 — {llm_hint}")
         return _finish(1)
 
     prompt = _synth_prompt(date)
 
-    log("Step 7: 인사이트 합성 시작 (Claude)...")
+    log(f"Step 7: 인사이트 합성 시작 ({llm_adapter.backend_name()})...")
     log(f"로그: {output_log}")
     claude_start = time.monotonic()
 
     # Claude Code 2.1+: --output-format stream-json 은 --verbose 필수.
     # 합성만 성공하면 briefing JSON 이 생기므로, claude 종료코드와 무관하게
     # 이후 briefing 존재 여부로 판단한다.
-    # 합성 모델: insight-synthesizer.md frontmatter 의 선언값을 따른다(없으면 sonnet).
-    # raw `claude -p` 는 agent frontmatter 를 안 읽으므로 여기서 명시하지 않으면
-    # CLI 기본값(Opus)으로 떨어져 ~5배 비싸진다. PRM_SYNTH_MODEL 로 1회 override 가능.
-    synth_model = _enforce_cheap_model(
-        _safe_model(os.environ.get("PRM_SYNTH_MODEL"), _synth_model_from_spec()))
+    # 합성 모델: claude 백엔드는 insight-synthesizer.md frontmatter 의 선언값을
+    # 따른다(없으면 sonnet) — raw `claude -p` 는 frontmatter 를 안 읽으므로 명시하지
+    # 않으면 CLI 기본값(Opus)으로 떨어져 ~5배 비싸진다. 다른 백엔드는 그 CLI 자체
+    # 기본 모델에 맡긴다(빈 문자열 허용). 어느 백엔드든 PRM_SYNTH_MODEL 로 override 가능.
+    _backend_name = llm_adapter.backend_name()
+    _model_default = _synth_model_from_spec() if _backend_name == "claude" else ""
+    synth_model = _safe_model(os.environ.get("PRM_SYNTH_MODEL"), _model_default)
+    if _backend_name == "claude":
+        synth_model = _enforce_cheap_model(synth_model)
     # agent 모드 기본 extended thinking 이 30분 폭주를 일으킴 — effort 로 캡한다.
     # 입력(synthesis-context)이 작아 low 로도 Sonnet 교차합성 품질은 유지된다.
     synth_effort = _safe_effort(os.environ.get("PRM_SYNTH_EFFORT"), "medium")
@@ -508,11 +512,11 @@ def run(args) -> int:
             warn(f"병렬 합성 예외 — {e} (briefing 산출 여부로 판단)")
     else:
       try:
-        claude_rc = llm_adapter.run_synthesis(
-            prompt, model=synth_model, effort=synth_effort,
+        claude_rc = llm_adapter.run_synthesis(llm_adapter.SynthJob(
+            prompt=prompt, model=synth_model, effort=synth_effort,
             allowed_tools="Read,Write,Edit,Bash",
             add_dir=str(paths.PROJECT_DIR),  # 워크스페이스 briefing Write 허용
-            log_path=output_log, env=synth_env)
+            log_path=output_log, env=synth_env))
       except (OSError, RuntimeError) as e:
         # Spawn itself failed (e.g. binary vanished between which() and run()).
         warn(f"LLM 호출 실패 — {e} (로그: {output_log})")
