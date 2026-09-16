@@ -944,7 +944,7 @@ def render_category_summary_blocks(category_summary: list[dict],
                                   dump_unmatched=True) if text else ""
 
         html += (
-            f'<div class="summary-block" style="border-left-color:{color};">\n'
+            '<div class="summary-block category-summary">\n'
             f'  <div class="sb-hd">{dot}{name}</div>\n'
         )
         if body:
@@ -1289,7 +1289,7 @@ def build_html(data: dict, date_str: str,
                 if not items:
                     continue
                 html += (
-                    '<div class="summary-block" style="border-left-color:#1c1917;">\n'
+                    '<div class="summary-block competitor-summary">\n'
                     f'  <div class="sb-hd">{esc(comp)}</div>\n'
                 )
                 for h in items:

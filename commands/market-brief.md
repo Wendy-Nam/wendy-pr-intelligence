@@ -1,10 +1,10 @@
 ---
-name: newsletter
-description: 산업군 인사이트 뉴스레터 생성·발송. 뉴스 수집 → 인사이트 합성 → HTML 렌더 → 품질 게이트 → 발송. 수집창 인자로 일간/주간 모두 커버.
+name: market-brief
+description: 시장 인사이트 브리핑 생성·발송. 뉴스 수집 → 인사이트 합성 → HTML 렌더 → 품질 게이트 → 발송. 수집창 인자로 일간/주간 모두 커버.
 argument-hint: "[date] [hours] — 예: '2026-06-08 48', '168'(주간) 또는 빈칸(오늘, pipelines.yaml 정책)"
 ---
 
-# 뉴스레터 생성
+# 시장 브리핑 생성
 
 ⚠️ **`prmonitor` CLI(`market-brief` 서브커맨드)로 실행한다. 브리핑 내용을 텍스트/마크다운으로 직접 출력하지 않는다.**
 스케줄 실행은 Routines 담당 (`routines/`) — 이 커맨드는 수동 생성 기능만.
@@ -15,7 +15,7 @@ argument-hint: "[date] [hours] — 예: '2026-06-08 48', '168'(주간) 또는 �
 - 첫 번째 토큰: 날짜 (YYYY-MM-DD). 없으면 오늘.
 - 두 번째 토큰: 수집 시간(hours). 없으면 pipelines.yaml 정책 (48, 월요일 72). 168 이면 주간.
 
-예시: `/newsletter` → 오늘, 정책 시간창 / `/newsletter 2026-06-08 168` → 주간
+예시: `/market-brief` → 오늘, 정책 시간창 / `/market-brief 2026-06-08 168` → 주간
 
 각종 설정 파일 존재 검증. `config/delivery.yaml` 없으면 `--no-email` 플래그를 추가한다.
 

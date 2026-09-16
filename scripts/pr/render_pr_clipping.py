@@ -1146,7 +1146,7 @@ def main():
         '<style>@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap");\n'
         'body { font-family: "Noto Sans KR", -apple-system, "Pretendard", sans-serif; '
         'max-width: 700px; margin: 0 auto; padding: 30px 20px; '
-        'color: #1c1917; line-height: 1.7; background: #fff; }</style>'
+        'color: #17362e; line-height: 1.7; background: #f3f5f1 !important; }</style>'
         '</head><body>\n'
         '<div style="font-size:11px;font-weight:700;color:#78716c;'
         f'letter-spacing:3px;margin-bottom:4px;">{domainpack.branding("html_header_pr")}</div>\n'

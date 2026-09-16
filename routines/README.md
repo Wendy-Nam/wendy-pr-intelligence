@@ -9,7 +9,7 @@ scheduled-tasks MCP 로 **등록**해 실행본을 만든다 — 등록 메타�
 | 파일 | task-id | 스케줄 |
 |------|---------|--------|
 | pr-monitoring-daily.md | pr-monitoring-daily | 평일 10:30 (+jitter) |
-| newsletter-insight-mwf.md | newsletter-insight-mwf | 월·수·금 09:30 (+jitter) |
+| market-brief-insight-mwf.md | market-brief-insight-mwf | 월·수·금 09:30 (+jitter) |
 
 작업 디렉토리: `${CLAUDE_PROJECT_DIR}` (실 config·시크릿이 있는 워크스페이스).
 루틴 프롬프트 안의 작업경로 자리표시자는 등록 시 이 값으로 치환된다.
@@ -25,7 +25,7 @@ scheduled-tasks MCP 로 **등록**해 실행본을 만든다 — 등록 메타�
 
 `/setup ROUTINES` 는 다음을 한다:
 
-1. `routines/{pr-monitoring-daily,newsletter-insight-mwf}.md` 의 작업경로
+1. `routines/{pr-monitoring-daily,market-brief-insight-mwf}.md` 의 작업경로
    자리표시자를 `${CLAUDE_PROJECT_DIR}` 로 치환한다.
 2. scheduled-tasks MCP(`create_scheduled_task`)로 각 루틴을 등록한다 —
    cron 스케줄·enabled 상태는 이 MCP 가 외부 메타데이터로 관리한다.

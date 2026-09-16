@@ -1,9 +1,9 @@
 ---
-name: newsletter-insight-mwf
-description: 산업 인사이트 뉴스레터 — 월·수·금 09:30 (스케줄은 Routines UI 에서 설정)
+name: market-brief-insight-mwf
+description: 시장 인사이트 브리핑 — 월·수·금 09:30 (스케줄은 Routines UI 에서 설정)
 ---
 
-산업군 인사이트 뉴스레터를 생성·발송한다.
+시장 인사이트 브리핑을 생성·발송한다.
 
 작업 디렉토리: 워크스페이스(`${CLAUDE_PROJECT_DIR}`) — `/setup` 의 루틴 등록 시 자동 설정된다.
 (로컬 Claude Code Desktop 전용 — 외부 뉴스 수집 + Azure 이메일 발송 필요. Cowork/클라우드에서는 수집이 차단돼 동작하지 않는다.)

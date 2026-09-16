@@ -1,6 +1,6 @@
 ---
 name: setup
-description: PR Monitor 설정 — 첫 설치(도메인팩 생성)·시크릿·수신자·키워드·루틴 등록·상태 확인. 리포트 생성은 /newsletter·/self-brief.
+description: PR Monitor 설정 — 첫 설치(도메인팩 생성)·시크릿·수신자·키워드·루틴 등록·상태 확인. 리포트 생성은 /market-brief·/self-brief.
 argument-hint: "[명령어] — 없으면 상태 + 미설정 시 설치 마법사"
 ---
 
@@ -159,7 +159,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/send-email.py" --validate
 
 루틴 정의는 `routines/*.md`. **스케줄 상태는 패키징으로 옮겨지지 않는다**(scheduled-tasks MCP/데스크탑의 외부 메타데이터). 따라서 설치 시 **등록**이 필요하다.
 
-1. `routines/{pr-monitoring-daily,newsletter-insight-mwf}.md` 의 작업경로를 `${CLAUDE_PROJECT_DIR}` 로 치환해 사용.
+1. `routines/{pr-monitoring-daily,market-brief-insight-mwf}.md` 의 작업경로를 `${CLAUDE_PROJECT_DIR}` 로 치환해 사용.
 2. scheduled-tasks MCP(`create_scheduled_task`)로 등록하거나, 데스크탑 앱 Routines 에서 추가.
 3. 각 루틴을 "Run Now" 1회 실행 → 권한(HTTP fetch·이메일·파일 IO) 사전 부여.
 
