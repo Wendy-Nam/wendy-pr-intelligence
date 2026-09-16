@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=Nanum+Myeongjo:wght@400;700;800&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");
 
 :root {
   --ink: #252923;
@@ -16,17 +16,17 @@
 body {
   max-width: 760px;
   margin: 0 auto;
-  padding: 48px 30px;
+  padding: 44px 32px;
   color: var(--body);
   background: var(--canvas) !important;
-  font-family: "Nanum Gothic", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 16px;
-  line-height: 1.82;
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 15px;
+  line-height: 1.75;
 }
 
 .brand { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .16em; margin-bottom: 11px; }
-h1, h2 { font-family: "Nanum Myeongjo", Georgia, serif; }
-h1 { color: var(--ink); font-size: clamp(29px, 5vw, 37px); font-weight: 800; letter-spacing: -.035em; line-height: 1.34; }
+h1, h2 { font-family: inherit; }
+h1 { color: var(--ink); font-size: clamp(26px, 4.5vw, 30px); font-weight: 800; letter-spacing: -.04em; line-height: 1.32; }
 .meta-line { color: var(--muted); font-size: 13px; margin: 9px 0 28px; }
 
 .tldr {
@@ -38,8 +38,8 @@ h1 { color: var(--ink); font-size: clamp(29px, 5vw, 37px); font-weight: 800; let
   background: #fbfbf7;
   box-shadow: none;
   color: var(--ink);
-  font-size: 16px;
-  line-height: 1.8;
+  font-size: 15px;
+  line-height: 1.75;
 }
 .tldr::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; border-radius: 4px 0 0 4px; background: var(--accent); }
 .tldr-lbl { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .16em; margin-bottom: 9px; }
@@ -52,7 +52,7 @@ h2 {
   padding: 0;
   border: 0;
   color: var(--ink);
-  font-size: 21px;
+  font-size: 18px;
   font-weight: 800;
   letter-spacing: -.035em;
 }
@@ -113,7 +113,7 @@ h2::after { content: ""; height: 1px; flex: 1; background: var(--line); }
 .footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; line-height: 1.7; }
 
 @media (max-width: 600px) {
-  body { padding: 28px 16px !important; font-size: 15px; }
+  body { padding: 28px 18px !important; font-size: 15px; }
   .tldr { padding: 20px 20px 20px 23px; font-size: 15px; }
   .insight-hd, .insight-body { padding-left: 17px; padding-right: 17px; }
   .summary-block { padding: 15px; }

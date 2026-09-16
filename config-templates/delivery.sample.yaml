@@ -24,9 +24,9 @@ email:
 
 recipients:
   newsletter_briefing:
-    name: EV 산업 인사이트 뉴스레터
+    name: 시장 인텔리전스 브리핑
     frequency: "월·수·금 08:00 KST"
-    subject_template: "[뉴스레터] {industry} 동향 및 인사이트 ({date}) - 출처 {source_count}건"
+    subject_template: "[시장 브리핑] {industry} 동향 및 인사이트 ({date}) - 출처 {source_count}건"
     to: []  # 수신자 이메일 목록
 
   marketing_pr_list:

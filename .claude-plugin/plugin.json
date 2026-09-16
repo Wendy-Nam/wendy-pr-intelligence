@@ -2,7 +2,7 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "wendy-pr-intelligence",
   "displayName": "Wendy PR Intelligence",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "description": "PR·마케팅 대행사의 자사 보도·해외 경쟁사·산업 동향 모니터링과 근거 기반 브리핑 제작을 자동화.",
   "author": {
     "name": "Wendy Nam",

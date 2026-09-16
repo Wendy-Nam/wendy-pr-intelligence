@@ -13,7 +13,7 @@ newsletter:
   send_email: true   # ← false 로 두면 발송 안 함 (HTML만 생성)
   monday_hours: 72
   email_group: "newsletter_briefing"
-  subject: "[뉴스레터] EV 산업 인사이트 {date}"
+  subject: "[시장 브리핑] EV 산업 인텔리전스 {date}"
 
 pr_monitoring:
   # 평일 매일 10:30 실행. 월요일은 주말 커버.

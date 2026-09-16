@@ -899,7 +899,7 @@ def main():
         if not rows:
             items = f'<p style="color:#78716c;font-size:13px;">{empty_msg}</p>'
             return (
-                f'<h2 style="font-size:16px;font-weight:700;color:#44403c;margin:0 0 12px;">'
+                f'<h2 style="font-size:18px;font-weight:700;color:#44403c;margin:0 0 12px;">'
                 f'{title}</h2>\n{items}'
             )
         # 국문 먼저, 영문 뒤 (소제목 없이 연속 배치)
@@ -907,7 +907,7 @@ def main():
         english = [r for r in rows if not r.get("is_korean", True)]
         parts = "".join(render_article(r) for r in (korean + english))
         return (
-            f'<h2 style="font-size:16px;font-weight:700;color:#44403c;margin:0 0 12px;">'
+            f'<h2 style="font-size:18px;font-weight:700;color:#44403c;margin:0 0 12px;">'
             f'{title}</h2>\n{parts}'
         )
 
@@ -934,7 +934,7 @@ def main():
         body = "".join(render_article(r) for r in stock_direct)
         stock_section_html = (
             '<hr style="border:none;border-top:1px solid #e7e5e4;margin:30px 0 20px;">\n'
-            '<h2 style="font-size:16px;font-weight:700;color:#78716c;margin:0 0 12px;">'
+            '<h2 style="font-size:18px;font-weight:700;color:#78716c;margin:0 0 12px;">'
             f'주가 · 시황 관련 ({len(stock_rows)}건)<span style="font-size:11px;'
             f'font-weight:400;color:#a8a29e;margin-left:8px;">제목에 자사명 포함된 기사만</span></h2>\n'
             f'{body}'
@@ -1143,14 +1143,15 @@ def main():
         '<!DOCTYPE html>\n<html lang="ko"><head><meta charset="UTF-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
         f'<title>PR 모니터링 — {TODAY}</title>\n'
-        '<style>@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;800&display=swap");\n'
-        'body { font-family: "Noto Sans KR", -apple-system, "Pretendard", sans-serif; '
-        'max-width: 700px; margin: 0 auto; padding: 30px 20px; '
-        'color: #17362e; line-height: 1.7; background: #f3f5f1 !important; }</style>'
+        '<style>@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.css");\n'
+        'body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, sans-serif; '
+        'max-width: 700px; margin: 0 auto; padding: 44px 32px; font-size:15px; '
+        'color: #17362e; line-height: 1.75; background: #f3f5f1 !important; } '
+        '@media(max-width:600px){body{padding:28px 18px!important}}</style>'
         '</head><body>\n'
         '<div style="font-size:11px;font-weight:700;color:#78716c;'
         f'letter-spacing:3px;margin-bottom:4px;">{domainpack.branding("html_header_pr")}</div>\n'
-        '<h1 style="font-size:22px;font-weight:800;margin:0 0 4px;">자사 보도 모니터링</h1>\n'
+        '<h1 style="font-size:28px;font-weight:800;letter-spacing:-.04em;line-height:1.32;margin:0 0 6px;">자사 보도 모니터링</h1>\n'
         f'<div style="font-size:13px;color:#78716c;margin-bottom:20px;">'
         f'{TODAY} · 최근 {HOURS}h</div>\n'
         f'{headline_digest}'

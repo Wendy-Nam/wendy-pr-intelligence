@@ -7,7 +7,7 @@
 language: ko
 sentence_max: 60                # 한국어 문장 최대 길이 (_KOREAN_SENTENCE_MAX). 영문·숫자·통화 토큰 제외하고 카운트.
 
-newsletter_title: "EV 산업 인사이트 뉴스레터"
+newsletter_title: "시장 인텔리전스 브리핑"
 pr_title: "콘토소 모터스 PR 클리핑"
 
 # 본문 금지 — 비유·추상어·버즈워드 (format.py _TONE_BLACKLIST 와 정확히 일치 = 코드 강제 목록)

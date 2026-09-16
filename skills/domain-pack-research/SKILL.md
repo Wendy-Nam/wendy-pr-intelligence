@@ -1,12 +1,12 @@
 ---
 name: domain-pack-research
-description: Research an organization and create a reviewable PR Monitor domain-pack draft, including competitors, categories, news sources, keywords, and self-context.
+description: Research an organization and create a deep, reviewable PR Intelligence domain-pack draft with linked competitors, categories, sources, precision rules, and editorial context.
 ---
 
 # Research-backed domain-pack drafting
 
 Use this skill when a user wants to initialize or substantially improve PR
-Monitor configuration from a company name, industry, website, or existing
+Intelligence configuration from a company name, industry, website, or existing
 domain pack. This is a drafting workflow: it produces source-backed proposals
 and writes files only after the user approves the proposed scope.
 
@@ -36,17 +36,32 @@ available. Do not invent metrics, product claims, RSS URLs, aliases, or company
 relationships. Label uncertain items as `candidate` and ask the user to confirm
 or remove them. Use date-qualified wording for changeable facts.
 
+Use [the pack-depth standard](references/pack-depth.md) before proposing scope
+or writing. It defines the required links between monitoring scope, collection,
+precision, PR handling, and editorial output. Treat it as a quality bar, not a
+template to copy: never transfer another organization's names, facts, sources,
+or editorial judgments into the new pack.
+
 ## Draft in three reviewable passes
 
-1. **Monitoring scope** — propose 6–12 competitors, 4–7 categories, company
-   aliases, priority regions, and 3–8 monitoring questions. Include sources and
-   wait for approval.
-2. **Collection design** — for each approved category, propose Korean and
-   English keywords, precise Google News queries, and high-quality RSS or
-   newsroom sources. Verify RSS URLs before recording them.
-3. **Editorial context** — draft positioning, strategic relationships, dated
-   key events, competitor baselines, and good/bad insight examples. Every
-   generated example is a draft for editorial review, not an internal fact.
+1. **Monitoring scope** — propose a company identity map, 6–12 competitors,
+   4–7 categories, priority regions, 3–8 monitoring questions, and relevant
+   cross-cutting themes (for example supply chain, regulation, or platform
+   dependencies). Map every competitor to categories and state why each
+   category matters to the organization. Include sources and wait for approval.
+2. **Collection and precision design** — for each approved category, propose
+   Korean and English keywords, precise Google News queries, and high-quality
+   specialist, official-newsroom, domestic, and regulatory sources as relevant.
+   Give each source/query a purpose, locale, priority, and category coverage.
+   Verify RSS URLs before recording them. Design strong exclusions, ordinary
+   exclusions, exceptions, and ambiguous-alias safeguards from observed false
+   positives; do not add generic noise lists by habit.
+3. **Editorial and PR context** — draft positioning, strategic relationships,
+   dated key events with provenance, competitor baselines, separate PR query
+   lanes for domestic and international coverage, topic diversity keys, and
+   audience-specific sensitivity treatment. Draft good/bad insight examples
+   only from supported facts; every generated example remains editorial-review
+   material, not an internal fact.
 
 ## Write only after approval
 
@@ -63,7 +78,9 @@ needed by the approved scope:
 | Long-lived context | `data/self-context/company-narrative.md`, key-events, competitor landscape |
 
 Keep aliases, category IDs, colors, watch keywords, source locale, query
-purpose, and key-event provenance complete.
+purpose, key-event provenance, and cross-file category references complete.
+Run the cross-file checks in the pack-depth standard before calling the draft
+ready for approval.
 
 ## Verification and handoff
 

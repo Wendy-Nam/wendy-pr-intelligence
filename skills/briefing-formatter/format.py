@@ -109,6 +109,7 @@ CAT_ORDER = list(_CAT_PACK.get("order", []))
 # 브랜딩: branding.yaml 값 우선, 비었거나 예시 자리표시면 회사명에서 파생(domainpack.branding).
 HTML_HEADER_NEWSLETTER = domainpack.branding("html_header_newsletter")
 HTML_FOOTER = domainpack.branding("html_footer")
+MARKET_BRIEF_TITLE = domainpack.get("style", "newsletter_title", "시장 인텔리전스 브리핑")
 
 # ── CSS ────────────────────────────────────────────────────────
 # 서식(디자인)은 코드가 아니라 이 CSS 파일이 정본이다 — 색상·폰트·여백을 바꾸려면
@@ -1205,7 +1206,7 @@ def build_html(data: dict, date_str: str,
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>산업군 인사이트 뉴스레터 — {date_str}</title>
+<title>{esc(MARKET_BRIEF_TITLE)} — {date_str}</title>
 <style>
 {CSS}
 </style>
@@ -1213,7 +1214,7 @@ def build_html(data: dict, date_str: str,
 <body bgcolor="white" style="background-color:#ffffff;">
 
 <div class="brand">{esc(HTML_HEADER_NEWSLETTER)}</div>
-<h1>산업군 인사이트 뉴스레터</h1>
+<h1>{esc(MARKET_BRIEF_TITLE)}</h1>
 <div class="meta-line">{meta_line}</div>
 
 """

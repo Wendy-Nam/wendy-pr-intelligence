@@ -11,7 +11,7 @@
 
 수집 → 본문 추출 → 분류 → 중요도 판정 → LLM 합성 → 품질 검증 → HTML/이메일 순서로 실행합니다. 검증에 걸린 결과는 보내지 않고 `HELD`로 보류합니다.
 
-<img src="docs/demo/assets/pr-monitor-banner.svg" alt="PR Intelligence — news, context, decision" width="720">
+<img src="docs/demo/assets/pr-monitor-banner.svg" alt="PR 인텔리전스 — 뉴스, 맥락, 판단" width="720">
 
 ## 미리보기
 

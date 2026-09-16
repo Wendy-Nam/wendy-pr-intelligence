@@ -1,11 +1,11 @@
 ---
 name: briefing-formatter
-description: insight-synthesizer JSON을 받아 산업군 인사이트 뉴스레터 HTML을 생성한다. LLM 호출 없이 결정론적 파이썬 템플릿으로 작동. CSS class 기반 HTML 출력.
+description: insight-synthesizer JSON을 받아 시장 인텔리전스 브리핑 HTML을 생성한다. LLM 호출 없이 결정론적 파이썬 템플릿으로 작동. CSS class 기반 HTML 출력.
 ---
 
 # Briefing Formatter Skill (v3)
 
-insight-synthesizer JSON → 산업군 인사이트 뉴스레터 HTML.
+insight-synthesizer JSON → 시장 인텔리전스 브리핑 HTML.
 
 **LLM 호출 없음.** 결정론적 파이썬 템플릿. 재현성 100%.
 
@@ -69,7 +69,7 @@ python3 .claude/skills/briefing-formatter/format.py \
 
 ```
 CONTOSO MOTORS · INDUSTRY INTELLIGENCE
-산업군 인사이트 뉴스레터
+시장 인텔리전스 브리핑
 YYYY년 MM월 DD일 (요일) · 수집기간 · N건 (해외 X, 국내 Y)
 
 [TL;DR]
