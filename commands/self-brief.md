@@ -24,7 +24,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" self-brief-daily $DATE ${HOU
 
 - DATE 인자(첫 토큰)가 있으면 그대로, 없으면 오늘.
 - HOURS 인자(둘째 토큰)가 있으면 그 수집창, 없으면 pipelines.yaml 자동 해석 (24h, 월요일 72h).
-- 전처리 산출물이 이미 있으면 `pre` 단계가 재사용 (월·수·금은 뉴스레터 Routine 이 미리 만들어둠).
+- 전처리 산출물이 이미 있으면 `pre` 단계를 재사용합니다. 시장 인텔리전스 루틴이 먼저 만든 산출물도 그대로 활용합니다.
 - Azure 인증(플러그인 설정 또는 delivery.yaml) 없으면 이메일 skip, HTML 만 생성 — 정상.
 
 ## 완료 보고

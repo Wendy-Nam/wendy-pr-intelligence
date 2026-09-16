@@ -1,4 +1,4 @@
-# USAGE — 도메인팩 설정 & 품질 튜닝 가이드
+# 설정과 품질 튜닝 가이드
 
 이 플러그인의 **출력 품질은 코드가 아니라 설정(도메인팩)이 결정**합니다. 엔진은 회사·산업을 모르고, 워크스페이스(`${CLAUDE_PROJECT_DIR}`)의 `config/`·`data/self-context/`만 읽어 동작합니다. 즉 **어느 산업이든 이 설정을 깊게 채울수록 브리핑이 정확·날카로워집니다.** 이 문서는 그 튜닝 방법입니다.
 
@@ -71,7 +71,7 @@
 
 ## 6. 수집·발송
 
-- **수집 범위**: `pipelines.yaml`의 `hours`(평일)·`monday_hours`(주말 몫). 실행 시 1회 지정도 가능 — `/newsletter 2026-06-15 168`(주간).
+- **수집 범위**: `pipelines.yaml`의 `hours`(평일)·`monday_hours`(주말 몫). 실행 시 한 번만 넓게 지정할 수도 있습니다 — `/market-brief 2026-06-15 168`(주간).
 - **발송**: `delivery.yaml`의 `recipients` 그룹 + `email.provider`(microsoft_graph|smtp). **`pilot_mode: true`면 alerts 그룹으로만** 발송(실발송 전 검증용). 실발송은 `false`.
 
 ---

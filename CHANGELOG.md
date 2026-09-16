@@ -1,4 +1,4 @@
-# Changelog
+# 변경 이력
 
 ## 0.7.3 — README 배너 확장
 
