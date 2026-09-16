@@ -2,8 +2,8 @@
   "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
   "name": "wendy-pr-intelligence",
   "displayName": "Wendy PR Intelligence",
-  "version": "0.6.0",
-  "description": "뉴스 자동화 — 산업 인사이트 뉴스레터 + 자사 PR 모니터링. 도메인팩으로 어떤 조직/산업에도 재사용.",
+  "version": "0.6.1",
+  "description": "PR·마케팅 대행사의 자사 보도·해외 경쟁사·산업 동향 모니터링과 근거 기반 브리핑 제작을 자동화.",
   "author": {
     "name": "Wendy Nam",
     "email": "sharedwendy999@gmail.com"

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="240" viewBox="0 0 1200 240" role="img" aria-labelledby="title desc">
+  <title id="title">PR Intelligence</title>
+  <desc id="desc">뉴스, 맥락, 판단을 연결하는 PR Intelligence의 가로 배너</desc>
+  <defs>
+    <linearGradient id="paper" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#31453b"/>
+      <stop offset="1" stop-color="#22352d"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="240" fill="url(#paper)"/>
+  <path d="M0 184C172 144 294 214 470 170S777 104 1200 147" fill="none" stroke="#9db8a5" stroke-opacity=".25" stroke-width="1"/>
+  <path d="M0 199C183 157 325 225 505 184s305-91 695-48" fill="none" stroke="#e9ddc7" stroke-opacity=".18" stroke-width="1"/>
+  <g fill="none" stroke="#e9ddc7" stroke-opacity=".72">
+    <circle cx="897" cy="93" r="32"/>
+    <circle cx="1014" cy="134" r="19"/>
+    <path d="M898 61v64M866 93h64M1014 115v38M995 134h38"/>
+  </g>
+  <g fill="#b9cebd">
+    <circle cx="830" cy="151" r="4"/><circle cx="1069" cy="73" r="4"/><circle cx="1124" cy="157" r="4"/>
+  </g>
+  <text x="74" y="79" fill="#b9cebd" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="4">NEWS  /  CONTEXT  /  DECISION</text>
+  <text x="72" y="145" fill="#fffdf7" font-family="Georgia, serif" font-size="49" font-weight="700" letter-spacing="-1">PR Intelligence</text>
+  <text x="75" y="181" fill="#d7dfd5" font-family="Arial, sans-serif" font-size="17">Evidence-backed intelligence for your company and market.</text>
+</svg>

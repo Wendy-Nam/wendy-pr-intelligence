@@ -1,10 +1,10 @@
 ---
 name: setup
-description: PR Monitor 설정 — 첫 설치(도메인팩 생성)·시크릿·수신자·키워드·루틴 등록·상태 확인. 리포트 생성은 /market-brief·/self-brief.
+description: PR Intelligence 설정 — 첫 설치(도메인팩 생성)·시크릿·수신자·키워드·루틴 등록·상태 확인. 리포트 생성은 /market-brief·/self-brief.
 argument-hint: "[명령어] — 없으면 상태 + 미설정 시 설치 마법사"
 ---
 
-# PR Monitor 설정
+# PR Intelligence 설정
 
 이 커맨드는 **설정·운영**만 담당한다(리포트 생성 X). 핵심은 **도메인팩 생성** — 이 엔진은 회사·산업을 모르고, `config/` 의 도메인팩 YAML 을 읽어 동작한다. 새 조직은 인터뷰로 도메인팩을 만든다.
 
@@ -44,7 +44,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/prmonitor_launch.py" paths
 - 마지막 실행: `logs/executions/` 최신 파일 날짜.
 
 ```
-━━━ PR Monitor 상태 ━━━
+━━━ PR Intelligence 상태 ━━━
 도메인팩: [company.name] / 카테고리 N개
 Azure 인증: ✅ 연결됨 | ❌ 미설정 (→ "Azure 키" 로 설정)
 수신자: N그룹 / 파일럿: ON|OFF
