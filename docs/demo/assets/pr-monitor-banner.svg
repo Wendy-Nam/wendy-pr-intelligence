@@ -18,7 +18,7 @@
   <g fill="#b9cebd">
     <circle cx="830" cy="151" r="4"/><circle cx="1069" cy="73" r="4"/><circle cx="1124" cy="157" r="4"/>
   </g>
-  <text x="74" y="79" fill="#b9cebd" font-family="Apple SD Gothic Neo, Nanum Gothic, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="4">뉴스  /  맥락  /  판단</text>
-  <text x="72" y="145" fill="#fffdf7" font-family="Nanum Myeongjo, AppleMyungjo, Georgia, serif" font-size="47" font-weight="700" letter-spacing="-1">PR 인텔리전스</text>
-  <text x="75" y="181" fill="#d7dfd5" font-family="Apple SD Gothic Neo, Nanum Gothic, Arial, sans-serif" font-size="17">국내외 보도를 판단 가능한 맥락으로.</text>
+  <text x="600" y="79" fill="#b9cebd" text-anchor="middle" font-family="Apple SD Gothic Neo, Nanum Gothic, Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="4">뉴스  /  맥락  /  판단</text>
+  <text x="600" y="145" fill="#fffdf7" text-anchor="middle" font-family="Nanum Myeongjo, AppleMyungjo, Georgia, serif" font-size="47" font-weight="700" letter-spacing="-1">PR 인텔리전스</text>
+  <text x="600" y="181" fill="#d7dfd5" text-anchor="middle" font-family="Apple SD Gothic Neo, Nanum Gothic, Arial, sans-serif" font-size="17">국내외 보도를 판단 가능한 맥락으로.</text>
 </svg>

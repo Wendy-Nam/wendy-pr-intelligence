@@ -1,4 +1,4 @@
-# PR Intelligence
+<h1 align="center">PR Intelligence</h1>
 
 **PR·마케팅 대행사의 리서치, 뉴스 클리핑, 정기 브리핑 제작 업무를 자동화하는 멀티호스트 인텔리전스 도구입니다.**
 
@@ -11,7 +11,9 @@
 
 수집 → 본문 추출 → 분류 → 중요도 판정 → LLM 합성 → 품질 검증 → HTML/이메일 순서로 실행합니다. 검증에 걸린 결과는 보내지 않고 `HELD`로 보류합니다.
 
-<img src="docs/demo/assets/pr-monitor-banner.svg" alt="PR 인텔리전스 — 뉴스, 맥락, 판단" width="720">
+<p align="center">
+  <img src="docs/demo/assets/pr-monitor-banner.svg" alt="PR 인텔리전스 — 뉴스, 맥락, 판단" width="720">
+</p>
 
 ## 미리보기
 
