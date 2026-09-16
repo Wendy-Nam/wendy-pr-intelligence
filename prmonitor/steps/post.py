@@ -1,33 +1,8 @@
-"""뉴스레터 후처리 (Steps 8-10) — faithful Python port of
-``scripts/newsletter/run-post.sh``.
+"""시장 인텔리전스 브리핑 후처리.
 
-Pipeline: resolve-refs → format.py → update-landscape → quality gate → email.
-Called after Step 7 (insight synthesis) produces the briefing JSON.
-
-This module ports ``ref-pr-monitor/scripts/newsletter/run-post.sh`` line-for-line.
-Cited .sh line numbers appear inline next to each ported block. Behaviour
-preserved exactly: the briefing-exists precondition, resolve-refs rc==2 hold
-semantics, the deterministic domestic/foreign count, skip-if-format-fails
-exit, the quality gate (warnings > 5 OR unresolved refs > 30% => hold +
-REVIEW_NEEDED.md), exit-on-failure step sequencing, exec-logging (trap EXIT
-→ try/finally), and retention cleanup.
-
-Notable contract-driven deltas from the .sh (behaviour identical, paths only):
-  - All ``data/processed`` and ``data/output`` literals become the three-root
-    dirs: processed/raw under PLUGIN_DATA (paths.PROCESSED_DIR), output under
-    PROJECT_DIR (paths.NEWSLETTER_OUTPUT_DIR / paths.OUTPUT_DIR).
-  - ``$PY`` → ``paths.venv_python()``; format.py lives at
-    ``paths.SKILLS_DIR/"briefing-formatter"/"format.py"`` (was
-    ``.claude/skills/...``). resolve-refs.py / update-landscape.py / exec-log.py
-    live under ``paths.SCRIPTS_DIR``.
-  - No bash/awk/date/trap: subprocess.run([...]) with explicit argv,
-    datetime/time for timestamps, try/finally for the EXIT trap.
-  - 게이트는 canonical 서비스가 소유한다: schema/ref/category/coverage 검증은
-    ``prmonitor.validation.validate_briefing``, 발송 직전 hash 신선도는
-    ``deliverable_is_current``, HELD 표식은 ``prmonitor.render.HELD_WATERMARK``.
-    이 모듈은 레거시 입력을 canonical 형태로 맞추는 얇은 래퍼일 뿐이다.
-  - The inline ``"$PY" -c`` count + quality-warning reads (.sh lines 72-95,
-    126-132) are computed in-process here (same logic, no subprocess).
+합성 JSON의 출처를 연결하고 HTML을 렌더한 뒤, 품질 게이트를 통과한 결과만
+발송한다. 출처 해소·렌더·자사 컨텍스트 업데이트의 세부 도구는 명시적 argv로
+호출하고, 스키마·참조·카테고리·커버리지는 공통 검증 모듈이 책임진다.
 """
 from __future__ import annotations
 
@@ -196,7 +171,7 @@ def _write_exec_log(
 
 
 def run(args) -> int:
-    """후처리 실행. 0 = 성공, nonzero = 실패. (run-post.sh main body)"""
+    """후처리를 실행한다. 0은 성공, 그 외 값은 실패다."""
     # ── 인자 — date/hours from dispatcher; --no-email via attr ──
     date_str = args.date
     hours = args.hours if getattr(args, "hours", None) is not None else 24  #

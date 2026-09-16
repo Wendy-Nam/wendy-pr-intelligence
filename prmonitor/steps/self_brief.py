@@ -1,32 +1,8 @@
-"""PR clipping step (CLI: self-brief) — Python port of ``scripts/pr/run-pr-monitor.sh``.
+"""자사 PR 브리핑 단계 (CLI: ``self-brief``).
 
-Faithful, behavior-preserving port of the bash orchestrator. Each block cites the
-``.sh`` line numbers it ports (numbers refer to the ground-truth copy at
-``ref-pr-monitor/scripts/pr/run-pr-monitor.sh``, identical to the in-repo copy).
-
-Pipeline (self-PR clipping harness):
-  Step A  require extracted-{date}.json  (precondition; run-pre.sh must run first)
-  Step B  render_pr_clipping.py {date} {hours} → pr-monitoring-{date}.html + .csv
-  Step C  accumulate-pr.py {month}          → pr-monthly-{month}.csv (best-effort)
-  Step C-2 accumulate-self-context.py {date} → timeline append (deterministic)
-  Step D  send_html_email(marketing group) + monthly-slice xlsx attachment
-  exec-log written in try/finally (was ``trap 'write_exec_log $?' EXIT``)
-
-Three-root differences vs the .sh (per the architecture contract):
-  - ``$PY scripts/pr/foo.py`` (cwd=PROJECT_ROOT, relative argv) becomes a
-    ``subprocess.run([venv_python, paths.SCRIPTS_DIR/'pr'/'foo.py', ...])`` call
-    with explicit absolute argv. No bash, no shell=True, no cwd reliance.
-  - Output paths come from ``paths`` (PR_OUTPUT_DIR / PROCESSED_DIR), not the flat
-    ``data/output/pr`` the bash assumed.
-  - ``date +...`` / ``wc -l`` / ``${DATE:0:7}`` / ``${VAR//x/y}`` are reimplemented
-    in pure Python.
-
-run(args) reads ``args.date`` (the dispatcher fills it with today when omitted).
-There is no ``--no-email`` flag on the ``self-brief`` subparser (see
-prmonitor.__main__), so the .sh's ``$3 == --no-email`` skip path is unreachable
-here and is intentionally not wired in; email always goes through
-common.send_html_email, which itself no-ops gracefully when delivery.yaml/auth is
-absent (matching the .sh's "artifact already written" failure policy).
+전처리된 기사에서 자사 언급을 찾아 HTML·CSV·XLSX를 만들고, 월별 PR 기록과
+self-context 타임라인을 갱신한다. 발송 설정이 있으면 HTML과 XLSX를 발송하며,
+``--no-email``으로 발송만 건너뛸 수 있다.
 """
 from __future__ import annotations
 
@@ -167,7 +143,7 @@ def run(args) -> int:
             require_file(
                 extracted,
                 f"Step A: {extracted} 없음.\n"
-                f"  → 먼저 run-pre.sh 실행: ./scripts/pipeline/run-pre.sh {date}",
+                f"  → 먼저 전처리 실행: python3 -m prmonitor pre {date}",
             )
         except SystemExit as e:  # require_file raises SystemExit(1)
             status = int(e.code) if isinstance(e.code, int) else 1

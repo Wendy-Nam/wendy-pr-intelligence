@@ -7,6 +7,12 @@ PR Intelligence는 RSS와 뉴스 검색 결과를 두 종류의 브리핑으로 
 
 Claude Code, Codex, Hermes 호환 환경은 같은 Python 엔진을 사용합니다. 호스트별 스킬과 LLM 실행 명령만 달라지고, 수집·저장·검증·렌더·발송의 업무 규칙은 공통입니다.
 
+## 정식 명령과 내부 도구
+
+일상 운영에서는 `market-brief`, `self-brief-daily`, `self-brief`, `init`, `doctor`만 사용합니다. `pre`, `post`, run ledger·복구 명령은 테스트와 장애 진단을 위한 내부 도구이며, 일반 사용 흐름이나 README에는 노출하지 않습니다.
+
+정식 명령은 Python step orchestrator가 조율합니다. `scripts/`는 수집·분류·렌더 같은 결정론적 세부 작업을 담당하며, 별도의 최상위 실행 경로가 아닙니다.
+
 ## 실행 흐름
 
 ```mermaid

@@ -1,30 +1,8 @@
-"""Preprocessing orchestrator — faithful Python port of ``scripts/pipeline/run-pre.sh``.
+"""시장·PR 브리핑이 함께 쓰는 결정론적 전처리 단계.
 
-Deterministic steps only (no LLM). Mirrors the bash orchestrator step-for-step;
-``.sh`` line numbers are cited inline next to each ported block.
-
-Pipeline (run-pre.sh "Steps 0-7"):
-  Step 0  ensure_venv          — handled by the dispatcher (__main__.py) before run()
-  Step 1  fetch-urls.py        — URL collection + clustering
-  Step 2  batch-extract.py     — article body extraction
-  Step 3  classify.py          — deterministic classification
-  Step 6  aggregate.py         — per-category fact aggregation
-          (Steps 4·5 are intentionally absent — folded into aggregate)
-  Step 7  preload-synthesis-context.py — compressed synthesis ctx
-
-Behaviour preserved exactly:
-  - arg parsing: optional date + --hours (default 48)
-  - Monday auto-bump 48→72 when no date given
-  - urls-{date}.hours marker superset/invalidation logic
-  - skip-if-output-exists caching per step                           (,101,121,137,152)
-  - --hours-override for weekly mode (HOURS > 24)
-  - exit-on-failure (nonzero return) + require_file guards           (,114,129,145,160)
-
-Paths: the bash version used a single flat root (``data/raw`` etc.). Under the
-three-root model, urls live in PLUGIN_DATA (:data:`paths.RAW_DIR`) and all
-processed artifacts in PLUGIN_DATA (:data:`paths.PROCESSED_DIR`), matching where
-the invoked step-scripts actually read/write. Step-scripts are invoked as
-subprocesses with the venv interpreter (:func:`paths.venv_python`).
+URL 수집·본문 추출·분류·카테고리 집계·합성용 컨텍스트 생성을 순서대로 실행한다.
+LLM은 호출하지 않는다. 각 세부 처리는 ``scripts/pipeline/``의 독립 Python 도구를
+venv 인터프리터와 명시적 인자로 호출하며, 실패하면 다음 단계로 진행하지 않는다.
 """
 from __future__ import annotations
 
@@ -43,7 +21,7 @@ _DEFAULT_HOURS = 48
 
 
 def _py() -> str:
-    """venv interpreter path as a string (run-pre.sh Step 0 ``$PY``)."""
+    """세부 Python 도구를 실행할 venv 인터프리터 경로를 반환한다."""
     return str(paths.venv_python())
 
 
@@ -54,9 +32,8 @@ def _scripts_dir():
 def _run_step(argv: list[str], fail_msg: str) -> bool:
     """Run a pipeline step-script subprocess. True on success, False on failure.
 
-    Mirrors ``if ! "$PY" scripts/... 2>&1; then err; exit 1; fi`` — output is
-    streamed to this process's stdout/stderr (no capture), and a nonzero exit
-    aborts the pipeline. No shell, explicit argv list (architecture contract).
+    출력은 캡처하지 않고 현재 콘솔로 전달한다. 종료 코드가 0이 아니면 파이프라인을
+    중단한다. 셸을 거치지 않고 명시적 argv 목록만 사용한다.
     """
     try:
         r = subprocess.run(argv, check=False)

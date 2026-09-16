@@ -1,46 +1,8 @@
-"""Market brief (industry newsletter) orchestrator (CLI: market-brief) —
-Python port of scripts/newsletter/run-newsletter.sh.
+"""시장 인텔리전스 브리핑의 정식 실행 경로 (CLI: ``market-brief``).
 
-Three-stage pipeline, faithful to the bash ground truth
-(ref-pr-monitor/scripts/newsletter/run-newsletter.sh):
-
-    1. pre.run     — URL 수집 → 추출 → 분류 → 집계 → 컨텍스트 (결정론적)
-    2. claude -p   — 인사이트 합성 (Step 7, LLM)
-    3. post.run    — HTML 렌더 → PR 누적 → 이메일
-
-Faithfully ported behaviors (with .sh line cites inline):
-  - Collection window: args.hours > resolve_hours("newsletter")
-  - Exec-metric logging on EXIT regardless of status (the bash `trap`)
-  - run-pre failure → exit 1
-  - --dry-run short-circuit after pre (skip claude)
-  - Guard: missing `claude` binary → clear error, exit 1
-  - The synthesis prompt heredoc, re-anchored to ABSOLUTE plugin paths
-  - claude exit code is informational only — briefing existence decides
-  - require_file on the briefing JSON → synthesis-failure guard
-  - PR_MONITOR_EXEC_LOGGED=1 so post's own trap stays silent (no dup log)
-  - run-post failure → exit 1
-  - REVIEW_NEEDED.md notice
-  - Cost summary — parsed from the stream-json log via JSON, NOT grep/awk
-
-Deviations from the .sh, mandated by the architecture contract:
-  - No bash / os.system / shell=True. Each step is subprocess.run([...]) with an
-    explicit argv list, or a direct in-process call to the sibling step module.
-  - Paths are 3-root absolute (prmonitor.paths), never `cd`+relative. The prompt's
-    spec/input/output references are re-anchored:
-      spec    → paths.AGENTS_DIR / "insight-synthesizer.md"   (was .claude/agents/…)
-      input   → paths.PROCESSED_DIR / synthesis-context-{date}.json
-      output  → paths.BRIEFING_DIR / newsletter-briefing-{date}.json
-      precheck formatter → paths.SKILLS_DIR / briefing-formatter / format.py
-  - Cost parsing reuses the exec-log JSON parser (last type=result event's
-    total_cost_usd) instead of `grep -o '"cost_usd"' | awk` — the .sh's own
-    comment notes the value lives in the stream-json result event.
-  - The pre/post stages are invoked as in-process module calls
-    (prmonitor.steps.pre.run / .post.run) rather than spawning the .sh, matching
-    the dispatcher contract in prmonitor.__main__.
-
-run(args) -> int : 0 = success, nonzero = failure. Uses args.date and
-args.hours (default resolve_hours("newsletter")). Optional args.dry_run /
-args.no_email mirror the bash flags when present.
+``pre``로 수집·분류·집계를 마친 뒤 선택한 LLM 백엔드로 인사이트를 합성하고,
+``post``에서 출처 연결·렌더·품질 게이트·발송을 수행한다. 실행 기록은 남기되,
+실패·보류 결과는 발송하지 않는다.
 """
 from __future__ import annotations
 
@@ -430,7 +392,7 @@ def _parse_cost(claude_log: str):
 
 
 def run(args) -> int:
-    """Port of run-newsletter.sh main flow. Returns 0 on success, nonzero on failure."""
+    """시장 인텔리전스 브리핑을 실행하고 성공 시 0을 반환한다."""
     date = getattr(args, "date", None) or datetime.now().strftime("%Y-%m-%d")
     # 시간창: 인자 > pipelines.yaml (월요일 보정 포함)
     hours = getattr(args, "hours", None)
