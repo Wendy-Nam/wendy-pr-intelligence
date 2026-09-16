@@ -57,6 +57,9 @@ python3 prmonitor_launch.py market-brief
 
 `claude`, `codex`, `hermes` 중 대상 호스트를 지정합니다. Hermes는 정상 설치된 CLI 또는 `PRM_SYNTH_CMD`가 있어야 실제 합성을 실행할 수 있습니다.
 
+저장소에는 Claude manifest만 포함됩니다. Codex/Hermes manifest는 빌드 시 생성됩니다.
+번들 테스트는 파일 구조·manifest·Python import를 확인하며, 각 호스트의 실제 설치/실행 성공까지 보장하지 않습니다.
+
 ## 사용
 
 | 명령 | 용도 |
@@ -92,3 +95,31 @@ CLI에서는 `market-brief`, `self-brief`, `init`, `doctor`를 사용합니다. 
 ## License
 
 [MIT](LICENSE) © Wendy Nam
+
+## 발송 경로와 검증 범위
+
+| 용도 | 진입점 | 네트워크 |
+|---|---|---|
+| 오프라인 발송 확인 | `python -m prmonitor send --provider local …` (기본값) | 없음 |
+| 검증된 실행 결과의 실발송 | `python -m prmonitor send --provider smtp …` 또는 `--provider microsoft_graph` | 있음 |
+| 기존 자동화·테스트 메일·첨부파일 | `python scripts/send-email.py …` (호환 wrapper) | 있음 |
+
+두 진입점의 SMTP/Graph 구현과 설정 로딩은 `prmonitor/email_service.py`를 공유합니다.
+`prmonitor send`는 READY 상태·검증 보고서·중복 발송 ledger를 확인합니다.
+기존 스크립트는 직접 발송 도구이므로 이 실행 상태/ledger 게이트를 제공하지 않습니다.
+
+`send`의 provider는 `--provider` → `PRMONITOR_DELIVERY_PROVIDER` → `local` 순으로 선택합니다.
+실발송 설정은 `--delivery-config`로 지정하거나 워크스페이스 `config/delivery.yaml`에서 읽습니다.
+인증값과 발신자는 기존 환경변수(`SMTP_*`, `AZURE_*`, `EMAIL_FROM`, `CLAUDE_PLUGIN_OPTION_*`)가 YAML보다 우선합니다.
+제목은 `--subject`, 수신자는 `--recipient`로 지정합니다. 이 명시적 수신자는 legacy `--to`처럼 그룹/파일럿 라우팅을 적용하지 않습니다.
+기존 스크립트의 provider 선택(`PRM_EMAIL_PROVIDER` → `email.provider` → Graph)은 하위호환을 위해 유지합니다.
+
+`accepted`는 SMTP/Graph 서버가 요청을 접수했다는 뜻이며 받은편지함 도착을 보장하지 않습니다.
+SMTP ID는 클라이언트 Message-ID, Graph ID는 request-id(없으면 로컬 시도 ID)입니다.
+수신 확인 연동은 아직 없어 내장 provider는 `delivered`를 반환하지 않습니다.
+잘못된 receipt 또는 응답 유실은 `unknown`으로 남기고 자동 재발송하지 않습니다.
+재시도 전에 공급자 로그에서 실제 접수 여부를 확인해야 합니다.
+
+오프라인 테스트는 재현 가능한 엔진 동작, 가짜 SMTP/HTTP 경계, 패키징을 검증합니다.
+실제 메일 수신, RSS/본문 추출 성공률, 호스트 CLI 버전별 출력 호환성은 별도의 live 검증이 필요합니다.
+실제 자격증명과 외부 서비스로 검증했다고 의미하지 않습니다.

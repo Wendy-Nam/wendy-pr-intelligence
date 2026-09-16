@@ -1,3 +1,11 @@
+## Unreleased — delivery integration
+
+- Share SMTP/Graph implementation and config loading between `prmonitor send` and the legacy email wrapper.
+- Preflight live configuration before ledger reservation; validate receipt hashes, provider, status and correlation ID.
+- Preserve unknown outcomes without automatic retries; describe accepted versus delivered semantics.
+- Add fake SMTP/Graph response and timeout coverage, and smoke-test all host bundles outside the source tree.
+- Clarify generated manifests and the boundary between offline checks and live verification.
+
 # 변경 이력
 
 ## 0.7.3 — README 배너 확장

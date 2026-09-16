@@ -11,7 +11,9 @@ def test_host_bundle_allowlist_and_manifest(tmp_path):
  hermes=build_bundle(repo,tmp_path/'hermes','hermes')
  assert claude['core_hash'] == result['core_hash'] == hermes['core_hash']
  assert validate_bundle(out,'codex')['valid']
- assert smoke_import_bundle(out)['ok']
+ for host in ('claude', 'codex', 'hermes'):
+  assert validate_bundle(tmp_path/host, host)['valid']
+  assert smoke_import_bundle(tmp_path/host)['ok']
 
 def test_installed_host_parses_manifest_and_skills(tmp_path):
  repo=Path(__file__).parents[1]; out=tmp_path/'hermes'

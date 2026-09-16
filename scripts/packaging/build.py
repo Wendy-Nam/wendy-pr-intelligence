@@ -79,9 +79,9 @@ def load_installed_host(root: Path) -> dict:
             'skills': skills, 'validation': validate_bundle(root, host)}
 
 def smoke_import_bundle(bundle: Path) -> dict:
-    env = dict(os.environ); env['PYTHONPATH'] = str(bundle)
+    env = dict(os.environ); env['PYTHONPATH'] = str(bundle.resolve())
     result = subprocess.run([sys.executable, '-c', 'import prmonitor; print(prmonitor.__name__)'], env=env,
-                            capture_output=True, text=True, check=False)
+                            capture_output=True, text=True, check=False, cwd=bundle.resolve())
     return {'ok': result.returncode == 0, 'stdout': result.stdout.strip(), 'stderr': result.stderr.strip()[:500]}
 
 if __name__ == '__main__':

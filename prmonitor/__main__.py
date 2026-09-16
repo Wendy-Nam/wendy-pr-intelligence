@@ -152,8 +152,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_send.add_argument("--validation", required=True)
     p_send.add_argument("--policy", default=None, help="validate에 사용한 policy JSON")
     p_send.add_argument("--recipient", required=True)
-    p_send.add_argument("--fixture-dir", required=True)
-    p_send.add_argument("--provider", default=None, help="local(기본)/smtp/microsoft_graph — live 전송 배선은 T14")
+    p_send.add_argument("--fixture-dir", default=".prmonitor/delivery-fixtures")
+    p_send.add_argument("--delivery-config", help="delivery.yaml 경로")
+    p_send.add_argument("--subject", default="[PR Monitor] Briefing")
+    p_send.add_argument("--provider", default=None, help="local(기본)/smtp/microsoft_graph")
 
     p_render = internal_parser("render", help="validated briefing HTML 생성")
     p_render.add_argument("--briefing", required=True)
@@ -265,9 +267,11 @@ def main(argv: list[str] | None = None) -> int:
         html = Path(args.html).read_bytes()
         policy = json.loads(Path(args.policy).read_text(encoding='utf-8')) if args.policy else {}
         try:
-            transport = resolve_transport(args.provider, fixture_dir=Path(args.fixture_dir))
+            transport = resolve_transport(args.provider, fixture_dir=Path(args.fixture_dir),
+                                          config_path=Path(args.delivery_config) if args.delivery_config else None,
+                                          subject=args.subject)
         except ValueError as exc:
-            print(json.dumps({'error': {'code':'UNKNOWN_DELIVERY_PROVIDER','message':str(exc)}}, ensure_ascii=False)); return 21
+            print(json.dumps({'error': {'code':'DELIVERY_CONFIG_REJECTED','message':str(exc)}}, ensure_ascii=False)); return 21
         artifact_hash = __import__('hashlib').sha256(html).hexdigest()
         if not deliverable_is_current(report, briefing=briefing, policy=policy,
                                       html_bytes=html, expected_html_hash=artifact_hash):

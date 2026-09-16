@@ -25,5 +25,5 @@ def test_transport_exception_becomes_unknown_without_retry(tmp_path):
  db=connect(tmp_path/'s.sqlite3'); db.execute("INSERT INTO runs(run_id,spec_json,state,revision,config_hash,created_at,updated_at) VALUES('r','{}','READY',0,'h',datetime('now'),datetime('now'))"); db.commit()
  class Lost:
   def send(self, **kwargs): raise TimeoutError('response lost')
- assert send_reserved(db,delivery_id='d',run_id='r',artifact=b'x',artifact_hash='a',recipient='u',transport=Lost(),key='k') is None
+ assert send_reserved(db,delivery_id='d',run_id='r',artifact=b'x',artifact_hash=hashlib.sha256(b'x').hexdigest(),recipient='u',transport=Lost(),key='k') is None
  assert db.execute("SELECT status FROM deliveries WHERE delivery_id='d'").fetchone()[0] == 'unknown'
