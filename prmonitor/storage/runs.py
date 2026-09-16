@@ -132,12 +132,39 @@ class RunStore:
 
     def complete_job(self, *, run_id: str, job_id: str, result_path: str, result_hash: str) -> bool:
         self.db.execute('BEGIN IMMEDIATE')
-        cur=self.db.execute("UPDATE jobs SET state='succeeded',attempts=attempts+1,result_path=?,result_hash=?,error_json=NULL WHERE run_id=? AND job_id=?",
+        cur=self.db.execute("UPDATE jobs SET state='succeeded',attempts=attempts+1,result_path=?,result_hash=?,error_json=NULL WHERE run_id=? AND job_id=? AND state IN ('pending','failed')",
                             (result_path,result_hash,run_id,job_id))
         if cur.rowcount == 1:
             self.db.execute("UPDATE runs SET revision=revision+1,updated_at=? WHERE run_id=?", (_now(), run_id))
             self.db.commit(); return True
         self.db.rollback(); return False
+
+    def accept_job_result(self, *, run_id: str, job_id: str, request_hash: str,
+                          result_hash: str, result: object, result_path: str = '') -> bool:
+        """Atomically append one accepted attempt and finish a retryable job.
+
+        A result for an already-succeeded job is deliberately rejected: callers
+        must create a repair/revision rather than overwrite provenance.
+        """
+        self.db.execute('BEGIN IMMEDIATE')
+        row = self.db.execute("SELECT state,request_hash FROM jobs WHERE run_id=? AND job_id=?",
+                              (run_id, job_id)).fetchone()
+        if (row is None or row['state'] not in {'pending', 'failed'}
+                or row['request_hash'] != request_hash):
+            self.db.rollback()
+            return False
+        attempt = self.db.execute(
+            "SELECT COALESCE(MAX(attempt), 0) + 1 AS n FROM job_attempts WHERE run_id=? AND job_id=?",
+            (run_id, job_id)).fetchone()['n']
+        self.db.execute(
+            "INSERT INTO job_attempts(run_id,job_id,attempt,request_hash,result_hash,state,result_json,error_json,created_at) VALUES(?,?,?,?,?,?,?,?,?)",
+            (run_id, job_id, attempt, request_hash, result_hash, 'succeeded',
+             json.dumps(result, ensure_ascii=False, sort_keys=True), None, _now()))
+        self.db.execute("UPDATE jobs SET state='succeeded',attempts=attempts+1,result_path=?,result_hash=?,error_json=NULL WHERE run_id=? AND job_id=?",
+                        (result_path, result_hash, run_id, job_id))
+        self.db.execute("UPDATE runs SET revision=revision+1,updated_at=? WHERE run_id=?", (_now(), run_id))
+        self.db.commit()
+        return True
 
     def fail_job(self, *, run_id: str, job_id: str, error: dict) -> bool:
         cur=self.db.execute("UPDATE jobs SET state='failed',attempts=attempts+1,error_json=? WHERE run_id=? AND job_id=?",

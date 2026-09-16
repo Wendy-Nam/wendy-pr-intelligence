@@ -1,2 +1,0 @@
-PASS: schema, request/result hashes, refs/coverage, article IDs, artifact hashes, local links, T00–T14 and V00–V94
-Markdown files: 25 JSON files: 10

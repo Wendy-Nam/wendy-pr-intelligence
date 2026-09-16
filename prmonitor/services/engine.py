@@ -84,11 +84,12 @@ class Engine:
     def accept_result(self, request, envelope: dict, *, result_hash: str | None = None,
                       result_path: str = '') -> dict:
         attempt = ingest_result(envelope, request, result_hash=result_hash)
-        self.store.record_attempt(run_id=request.run_id, job_id=request.job_id,
-                                  request_hash=request.request_hash, state='succeeded',
-                                  result_hash=result_hash, result=attempt['result'])
-        self.store.complete_job(run_id=request.run_id, job_id=request.job_id,
-                                result_path=result_path, result_hash=result_hash or '')
+        if not self.store.accept_job_result(
+            run_id=request.run_id, job_id=request.job_id,
+            request_hash=request.request_hash, result_hash=result_hash or '',
+            result=attempt['result'], result_path=result_path,
+        ):
+            raise ValueError('JOB_NOT_ACCEPTING_RESULTS')
         return attempt
 
     def reject_result(self, request, error: dict) -> None:
@@ -102,6 +103,19 @@ class Engine:
                  report_path: str = '') -> ValidationReport:
         report = validate_briefing(briefing, article_ids=article_ids,
                                    category_ids=category_ids, policy=policy)
+        pending_required = self.store.db.execute(
+            "SELECT job_id FROM jobs WHERE run_id=? AND required=1 AND state!='succeeded' ORDER BY job_id",
+            (prepared.record.run_id,)).fetchall()
+        if pending_required:
+            from ..validation import Finding
+            job_ids = tuple(row['job_id'] for row in pending_required)
+            report = ValidationReport(
+                'HELD', report.findings + (Finding(
+                    'REQUIRED_JOBS_PENDING', 'error', '/jobs',
+                    'required jobs are not complete: ' + ', '.join(job_ids), job_ids,
+                ),), report.briefing_hash, report.policy_hash,
+                report.required_jobs, report.coverage,
+            )
         row = self.store.db.execute(
             "INSERT OR REPLACE INTO validations(run_id,revision,briefing_hash,policy_hash,status,report_path) VALUES(?,?,?,?,?,?)",
             (prepared.record.run_id, prepared.record.revision, report.briefing_hash,
@@ -114,7 +128,8 @@ class Engine:
             import json
             tmp.write_text(json.dumps(report.as_dict(), ensure_ascii=False, sort_keys=True, indent=2), encoding='utf-8')
             tmp.replace(target)
-        expected = {RunState.PREPARED, RunState.AWAITING_LLM, RunState.GENERATING, RunState.VALIDATING}
+        expected = {RunState.PREPARED, RunState.AWAITING_LLM, RunState.GENERATING,
+                    RunState.VALIDATING, RunState.HELD}
         current = self.store.get(prepared.record.run_id)
         if current.state in expected:
             target = RunState.READY if report.status == 'PASS' else RunState.HELD

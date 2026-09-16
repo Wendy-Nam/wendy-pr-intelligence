@@ -1,4 +1,4 @@
-# PR Monitor — Claude Code Plugin
+# PR Monitor — multi-host news intelligence plugin
 
 **마케팅·전략기획 팀을 위한 뉴스 모니터링 자동화 플러그인.**
 
@@ -12,7 +12,7 @@
 실행할 때마다 자사·경쟁사 맥락이 `data/self-context/` 에 누적되어, 다음 브리핑의 전략 시사점이 점점 정교해집니다 — 그때그때 요약만 내놓는 도구와 다른 지점입니다.
 
 > [!IMPORTANT]
-> 로컬 **Claude Code Desktop**(Windows·macOS) 전용. 뉴스 사이트를 직접 수집하므로 네트워크가 필요합니다. **Cowork(클라우드)에서는 수집이 차단되어 동작하지 않습니다.**
+> 뉴스 사이트를 직접 수집하므로 네트워크가 필요합니다. Claude Code와 Codex용 번들을 제공하며, Hermes는 설치된 런타임 또는 `PRM_SYNTH_CMD` 기반 generic adapter가 필요합니다. Cowork(클라우드)에서는 수집이 차단될 수 있습니다.
 
 ## 온라인 샘플 미리보기
 
@@ -117,7 +117,7 @@ Code 서브에이전트가 아니라 평범한 프롬프트 텍스트 파일이�
 | `PRM_LLM` | 대상 | 설정 |
 |---|---|---|
 | `claude` (기본) | Claude Code (`claude -p`) | 별도 설정 불필요 |
-| `codex` | OpenAI Codex CLI (`codex exec --full-auto`) | 필요 시 `PRM_CODEX_CMD` 로 플래그 override |
+| `codex` | OpenAI Codex CLI (`codex exec`) | 필요 시 `PRM_CODEX_CMD` 로 플래그 override |
 | `hermes` (= `generic`) | 그 외 모든 에이전트 CLI (Hermes 에이전트·oh-my-openagent 역할·`opencode run` 등) | `PRM_SYNTH_CMD` 필수 — 예: `PRM_SYNTH_CMD='my-agent-cli run --prompt-file {prompt_file}'` (`{prompt_file}`/`{prompt}`/`{model}` 치환 가능) |
 
 ```bash
@@ -125,9 +125,19 @@ export PRM_LLM=codex
 python3 prmonitor_launch.py market-brief        # Claude Code 훅·매니페스트 없이 그대로 동작
 ```
 
+호스트별 배포 번들은 아래처럼 만듭니다. `claude`, `codex`, `hermes` 중 대상 호스트를 지정하세요.
+
+```bash
+.venv/bin/python -m scripts.packaging.build . /tmp/prmonitor-bundle --host codex
+```
+
+Hermes의 headless 실행은 `PRM_SYNTH_CMD`가 가리키는 정상 동작하는 Hermes CLI가 있을 때만 지원합니다. 번들 형식만으로 외부 Hermes 설치 상태를 대신할 수는 없습니다.
+
 모델 이름은 `PRM_SYNTH_MODEL`(합성)·`PRM_GLOSSARY_MODEL`(용어집)·`PRM_ENRICH_MODEL`(기사
 보강)·`PRM_HAIKU_MODEL`/`PRM_SONNET_MODEL`(PR 클리핑 톤·브리핑)로 백엔드 무관하게 override
 가능합니다.
+
+개발·운영에 필요한 문서는 [아키텍처](docs/ARCHITECTURE.md)와 [운영·복구 가이드](docs/OPERATIONS.md)에만 유지합니다.
 
 > [!IMPORTANT]
 > Claude Code 없이 실행할 땐 `SessionStart` 훅이 없어서 **최초 1회 스캐폴딩을 직접

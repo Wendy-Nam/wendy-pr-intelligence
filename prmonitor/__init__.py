@@ -1,7 +1,8 @@
-"""PR Monitor — Claude Code plugin engine package.
+"""PR Monitor multi-host news intelligence engine package.
 
 Domain-agnostic news-automation pipeline. Org-specific knowledge lives in the
-domain pack under ``${CLAUDE_PROJECT_DIR}/config`` (see docs/specs).
+domain pack under the workspace ``config/`` directory. See
+``docs/ARCHITECTURE.md`` for the runtime boundaries.
 """
 __version__ = "0.5.6"
 

@@ -150,6 +150,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_send.add_argument("--briefing", required=True)
     p_send.add_argument("--html", required=True)
     p_send.add_argument("--validation", required=True)
+    p_send.add_argument("--policy", default=None, help="validate에 사용한 policy JSON")
     p_send.add_argument("--recipient", required=True)
     p_send.add_argument("--fixture-dir", required=True)
     p_send.add_argument("--provider", default=None, help="local(기본)/smtp/microsoft_graph — live 전송 배선은 T14")
@@ -203,7 +204,8 @@ def main(argv: list[str] | None = None) -> int:
         import hashlib, json
         from pathlib import Path
         from .storage.runs import RunStore
-        from .services.jobs import JobRequest, ingest_result
+        from .services.jobs import JobRequest
+        from .services.engine import Engine
         store = RunStore(Path(args.state_dir))
         row = store.db.execute("SELECT * FROM jobs WHERE run_id=? AND job_id=?", (args.run_id, args.job_id)).fetchone()
         if row is None:
@@ -211,12 +213,13 @@ def main(argv: list[str] | None = None) -> int:
         envelope = json.loads(Path(args.result).read_text(encoding='utf-8'))
         request = JobRequest(args.run_id,args.job_id,row['kind'],bool(row['required']),{},row['request_hash'])
         try:
-            attempt = ingest_result(envelope, request, result_hash=hashlib.sha256(Path(args.result).read_bytes()).hexdigest())
+            Engine(store).accept_result(
+                request, envelope,
+                result_hash=hashlib.sha256(Path(args.result).read_bytes()).hexdigest(),
+                result_path=args.result,
+            )
         except (ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({'error': {'code':'INGEST_REJECTED','message':str(exc)}}, ensure_ascii=False)); return 2
-        store.record_attempt(run_id=args.run_id, job_id=args.job_id, request_hash=request.request_hash,
-                             state='succeeded', result_hash=attempt['result_hash'], result=attempt['result'])
-        store.complete_job(run_id=args.run_id, job_id=args.job_id, result_path=args.result, result_hash=attempt['result_hash'])
         print(json.dumps({'run_id':args.run_id,'job_id':args.job_id,'status':'accepted'}, ensure_ascii=False)); return 0
 
     if args.cmd == "validate":
@@ -241,7 +244,8 @@ def main(argv: list[str] | None = None) -> int:
         from .models import RunState
         from .storage.runs import RunStore
         from .validation import Finding, ValidationReport
-        from .delivery import send_validated
+        from .delivery import dedupe_key, send_reserved
+        from .validation import deliverable_is_current
         from .delivery_providers import resolve_transport
         store = RunStore(Path(args.state_dir)); record = store.get(args.run_id)
         if record.state != RunState.READY:
@@ -250,17 +254,22 @@ def main(argv: list[str] | None = None) -> int:
         validation = json.loads(Path(args.validation).read_text(encoding='utf-8'))
         report = ValidationReport(validation['status'], tuple(Finding(f['code'],f['severity'],f['path'],f['message'],tuple(f.get('refs',()))) for f in validation.get('findings',[])), validation['briefing_hash'], validation['policy_hash'], validation.get('required_jobs',{}), validation.get('coverage',{}))
         html = Path(args.html).read_bytes()
-        policy = {}
+        policy = json.loads(Path(args.policy).read_text(encoding='utf-8')) if args.policy else {}
         try:
             transport = resolve_transport(args.provider, fixture_dir=Path(args.fixture_dir))
         except ValueError as exc:
             print(json.dumps({'error': {'code':'UNKNOWN_DELIVERY_PROVIDER','message':str(exc)}}, ensure_ascii=False)); return 21
-        try:
-            receipt = send_validated(report=report, briefing=briefing, policy=policy, html=html,
-                                     recipient=args.recipient, transport=transport,
-                                     expected_html_hash=__import__('hashlib').sha256(html).hexdigest())
-        except ValueError as exc:
-            print(json.dumps({'error': {'code':'DELIVERY_GATE_REJECTED','message':str(exc)}}, ensure_ascii=False)); return 21
+        artifact_hash = __import__('hashlib').sha256(html).hexdigest()
+        if not deliverable_is_current(report, briefing=briefing, policy=policy,
+                                      html_bytes=html, expected_html_hash=artifact_hash):
+            print(json.dumps({'error': {'code':'DELIVERY_GATE_REJECTED','message':'DELIVERY_GATE_REJECTED'}}, ensure_ascii=False)); return 21
+        recipient_hash = __import__('hashlib').sha256(args.recipient.encode()).hexdigest()
+        receipt = send_reserved(store.db, delivery_id=__import__('uuid').uuid4().hex,
+                                run_id=args.run_id, artifact=html, artifact_hash=artifact_hash,
+                                recipient=args.recipient, transport=transport,
+                                key=dedupe_key(args.run_id, artifact_hash, recipient_hash))
+        if receipt is None:
+            print(json.dumps({'error': {'code':'DELIVERY_DUPLICATE_OR_UNKNOWN'}}, ensure_ascii=False)); return 21
         print(json.dumps({'delivery_id':receipt.delivery_id,'status':receipt.status,'artifact_hash':receipt.artifact_hash}, ensure_ascii=False)); return 0
 
     if args.cmd == "render":
